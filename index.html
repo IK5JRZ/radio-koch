@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radio Koch Adventure - Morse Trainer</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts per stile Pixel / Retro -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <!-- FontAwesome per icone retro -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Share Tech Mono', monospace;
+      image-rendering: pixelated;
+    }
+    .retro-font {
+      font-family: 'Press Start 2P', cursive;
+    }
+    /* Protezione globale contro selezione testo e trascinamento elementi */
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      -webkit-user-drag: none;
+    }
+    /* Permetti la selezione e l'inserimento di testo SOLO all'interno dei campi di input del gioco */
+    input, select, textarea {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+    }
+    /* Effetto CRT Scanline */
+    .crt::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      z-index: 99;
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+    }
+    /* Pulsanti con bordo retro */
+    .btn-retro {
+      box-shadow: 0px 4px 0px 0px #1a1a1a;
+      transition: all 0.1s ease;
+    }
+    .btn-retro:active {
+      transform: translateY(4px);
+      box-shadow: 0px 0px 0px 0px #1a1a1a;
+    }
+    /* Scrollbar personalizzata stile terminale */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #4b5563;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #10b981;
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col justify-between overflow-x-hidden crt relative selection:bg-emerald-500 selection:text-black">
+
+  <!-- Header -->
+  <header class="border-b border-emerald-900/40 bg-gray-900/80 backdrop-blur px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded bg-emerald-500 flex items-center justify-center animate-pulse shadow-[0_0_10px_#10b981]">
+        <i class="fa-solid fa-tower-broadcast text-gray-950 text-sm"></i>
+      </div>
+      <div>
+        <h1 class="text-emerald-400 font-bold tracking-wider text-xl uppercase">Radio Koch Adventure</h1>
+        <p class="text-xs text-gray-400" id="header-sub">Morse Learning Platformer & Copy Game</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <!-- Selettore Lingua Header -->
+      <div class="flex bg-gray-950 rounded border border-gray-800 p-0.5 text-xs">
+        <button onclick="changeLanguage('it')" id="lang-btn-it" class="px-2.5 py-1 rounded font-bold transition duration-150 bg-emerald-500 text-gray-950">IT</button>
+        <button onclick="changeLanguage('en')" id="lang-btn-en" class="px-2.5 py-1 rounded font-bold transition duration-150 text-gray-400 hover:text-white">EN</button>
+      </div>
+
+      <div id="header-stats" class="hidden flex items-center gap-4 text-sm bg-gray-950/80 px-3 py-1.5 rounded border border-gray-800">
+        <div><span class="text-gray-500 uppercase" id="hdr-stat-call">NOMINATIVO:</span> <span id="stat-callsign" class="text-emerald-400 font-bold">---</span></div>
+        <div class="w-px h-4 bg-gray-800"></div>
+        <div><span class="text-gray-500 uppercase" id="hdr-stat-less">LEZIONE:</span> <span id="stat-lesson" class="text-emerald-400">1</span></div>
+        <div class="w-px h-4 bg-gray-800"></div>
+        <div><span class="text-gray-500 uppercase" id="hdr-stat-lev">LIVELLO:</span> <span id="stat-level" class="text-amber-400 font-bold">1</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Work Area -->
+  <main class="flex-grow flex flex-col items-center justify-center p-4 max-w-6xl w-full mx-auto">
+    
+    <!-- SCHERMATA DI PRESENTAZIONE INIZIALE -->
+    <div id="screen-intro" class="w-full max-w-xl bg-gray-900 border-2 border-emerald-500/50 rounded-lg p-8 shadow-[0_0_25px_rgba(16,185,129,0.2)] text-center flex flex-col items-center justify-center space-y-8">
+      <div class="space-y-2">
+        <span class="retro-font text-gray-500 text-[10px] md:text-xs tracking-wider uppercase block" id="intro-by">PRESENTATO DA</span>
+        <h1 class="retro-font text-emerald-400 text-xl md:text-3xl tracking-widest drop-shadow-[0_0_8px_rgba(16,185,129,0.6)] uppercase">Carlo Gros</h1>
+      </div>
+
+      <!-- Personaggio Mario saltante in SVG con IK5JRZ sulla maglia/salopette -->
+      <div class="relative py-4">
+        <svg viewBox="0 0 100 120" class="w-44 h-48 mx-auto animate-bounce filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]">
+          <!-- Cappello Rosso -->
+          <path d="M 30 15 L 70 15 L 70 25 L 30 25 Z" fill="#ef4444"/>
+          <path d="M 25 20 L 75 20 L 75 25 L 25 25 Z" fill="#ef4444"/>
+          <!-- Faccia / Pelle -->
+          <rect x="30" y="25" width="35" height="25" fill="#fecdd3" />
+          <!-- Occhio -->
+          <rect x="55" y="30" width="5" height="5" fill="#1e293b" />
+          <!-- Baffo Marrone -->
+          <rect x="50" y="40" width="15" height="5" fill="#78350f" />
+          <rect x="45" y="37" width="5" height="5" fill="#78350f" />
+          <!-- Naso -->
+          <rect x="62" y="33" width="8" height="7" fill="#fecdd3" />
+          <!-- Maglia Rosso -->
+          <rect x="25" y="50" width="45" height="25" fill="#ef4444" />
+          <!-- Salopette Blu -->
+          <rect x="30" y="50" width="8" height="15" fill="#3b82f6" />
+          <rect x="52" y="50" width="8" height="15" fill="#3b82f6" />
+          <rect x="28" y="65" width="34" height="20" fill="#3b82f6" />
+          <!-- Bottoni Gialli -->
+          <circle cx="34" cy="68" r="2.5" fill="#eab308" />
+          <circle cx="56" cy="68" r="2.5" fill="#eab308" />
+          <!-- Braccia e Guanti bianchi (Posa salto) -->
+          <rect x="15" y="35" width="10" height="20" fill="#ef4444" />
+          <circle cx="20" cy="30" r="7" fill="#ffffff" /> 
+          <rect x="68" y="55" width="12" height="10" fill="#ef4444" />
+          <circle cx="83" cy="60" r="7" fill="#ffffff" />
+          <!-- Gambe piegate -->
+          <rect x="23" y="85" width="12" height="12" fill="#3b82f6" />
+          <rect x="18" y="97" width="14" height="8" fill="#78350f" />
+          <rect x="50" y="85" width="12" height="10" fill="#3b82f6" />
+          <rect x="53" y="95" width="14" height="8" fill="#78350f" />
+          <!-- Scritta Nominativo IK5JRZ sulla pancia di Mario -->
+          <text x="45" y="78" font-family="'Share Tech Mono', monospace" font-size="8.5" font-weight="bold" fill="#ffffff" text-anchor="middle" letter-spacing="0.2">IK5JRZ</text>
+        </svg>
+      </div>
+
+      <div class="space-y-4 w-full">
+        <p class="text-sm text-gray-400 max-w-md mx-auto leading-relaxed" id="intro-desc">
+          Inizia il tuo percorso di addestramento telegrafico in stile arcade. Sconfiggi il rumore di fondo e padroneggia il ritmo del Metodo Koch!
+        </p>
+
+        <!-- Pulsante di controllo Musica Chiptune -->
+        <div class="py-1">
+          <button id="btn-toggle-music" class="px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 text-emerald-400 border border-emerald-900 font-bold uppercase text-xs transition flex items-center justify-center gap-2 mx-auto active:scale-95">
+            <i class="fa-solid fa-volume-high text-sm"></i> <span id="intro-music-label">Musica: Attiva</span>
+          </button>
+        </div>
+
+        <button id="btn-start-presentation" class="btn-retro w-full bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold py-4 rounded-lg uppercase tracking-widest text-sm flex items-center justify-center gap-2 transition duration-150">
+          <span id="intro-btn-continue">Premi per continuare</span> <i class="fa-solid fa-gamepad"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- SCHERMATA INIZIALE (Setup) -->
+    <div id="screen-setup" class="hidden w-full max-w-4xl bg-gray-900 border-2 border-emerald-500/50 rounded-lg p-6 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+      <div class="text-center mb-6">
+        <span class="retro-font text-emerald-400 text-lg md:text-2xl block mb-2 tracking-widest animate-bounce">CW KOCH QUEST</span>
+        <p class="text-sm text-gray-400" id="setup-subtitle">Allena il tuo orecchio nel mondo dei radioamatori. Raccogli le lettere, accendi la radio e completa le cinquine!</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Colonna 1: Profilo & Livello -->
+        <div class="space-y-4 bg-gray-950/40 p-4 rounded border border-gray-800">
+          <h3 class="text-emerald-400 font-bold text-sm uppercase tracking-wider border-b border-gray-800 pb-2"><i class="fa-solid fa-user-astronaut mr-2"></i><span id="setup-col1-title">Profilo Operatore</span></h3>
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase" id="setup-call-label">Nominativo (Callsign)</label>
+            <input type="text" id="setup-callsign" placeholder="es. IU3ABC" value="IK5JRZ" class="w-full bg-gray-950 border border-emerald-900 rounded px-3 py-1.5 text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase font-mono tracking-widest">
+          </div>
+
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase" id="setup-level-label">Tolleranza Errori</label>
+            <select id="setup-level" class="w-full bg-gray-950 border border-emerald-900 rounded px-3 py-1.5 text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+              <!-- Riempito dinamicamente da JS per bilinguismo -->
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase" id="setup-lesson-label">Lezione Koch (Progressiva)</label>
+            <select id="setup-lesson" class="w-full bg-gray-950 border border-emerald-900 rounded px-3 py-1.5 text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+              <!-- Riempito dinamicamente da JS -->
+            </select>
+            <div class="mt-2 text-xs bg-gray-950 p-2 rounded border border-gray-800 text-gray-400">
+              <span class="font-bold text-emerald-500" id="setup-lesson-inc">Lettere incluse:</span> <span id="setup-lesson-chars" class="font-mono text-emerald-300"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Colonna 2: Audio Settings -->
+        <div class="space-y-4 bg-gray-950/40 p-4 rounded border border-gray-800">
+          <h3 class="text-emerald-400 font-bold text-sm uppercase tracking-wider border-b border-gray-800 pb-2"><i class="fa-solid fa-sliders mr-2"></i><span id="setup-col2-title">Impostazioni Audio</span></h3>
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase" id="setup-wpm-label">Velocità caratteri (WPM)</label>
+            <div class="flex items-center gap-4">
+              <input type="range" id="setup-wpm" min="10" max="40" value="18" class="flex-grow accent-emerald-500">
+              <span id="display-wpm" class="w-12 text-center text-emerald-400 font-bold bg-gray-950 py-0.5 rounded border border-emerald-900">18</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase" id="setup-eff-label">Spaziatura Farnsworth (WPM)</label>
+            <div class="flex items-center gap-4">
+              <input type="range" id="setup-eff-wpm" min="8" max="40" value="12" class="flex-grow accent-emerald-500">
+              <span id="display-eff-wpm" class="w-12 text-center text-emerald-400 font-bold bg-gray-950 py-0.5 rounded border border-emerald-900">12</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase" id="setup-freq-label">Frequenza Nota (Hz)</label>
+            <div class="flex items-center gap-4">
+              <input type="range" id="setup-freq" min="400" max="1000" step="50" value="650" class="flex-grow accent-emerald-500">
+              <span id="display-freq" class="w-16 text-center text-emerald-400 font-bold bg-gray-950 py-0.5 rounded border border-emerald-900">650 Hz</span>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button id="btn-test-audio" class="w-full bg-gray-800 hover:bg-gray-700 text-emerald-400 border border-emerald-500/30 rounded py-2 text-xs font-bold uppercase transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-volume-high"></i> <span id="setup-test-btn">Prova Audio (Tasto K)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Colonna 3: Generatore di Esercizi IA ✨ -->
+        <div class="space-y-4 bg-emerald-950/10 p-4 rounded border border-emerald-500/20">
+          <h3 class="text-emerald-400 font-bold text-sm uppercase tracking-wider border-b border-emerald-800/40 pb-2 flex items-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="setup-col3-title">Esercizio Personalizzato ✨</span>
+          </h3>
+          <p class="text-xs text-gray-400" id="setup-ai-desc">
+            Lascia che l'IA crei un testo mnemonico o un finto QSO radio usando solo le lettere apprese fino ad ora!
+          </p>
+          
+          <button id="btn-generate-phrase" class="w-full bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold py-2 px-3 rounded text-xs uppercase tracking-wider transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-sparkles"></i> ✨ <span id="setup-ai-btn">Genera Frase Koch</span>
+          </button>
+
+          <div id="ai-exercise-box" class="hidden bg-gray-950/80 p-3 rounded border border-emerald-800/40 text-center space-y-2">
+            <div class="text-xs text-emerald-500 font-bold uppercase tracking-wider" id="setup-ai-result-title">Testo IA Generato:</div>
+            <div id="ai-generated-text" class="font-mono text-emerald-300 text-base font-bold bg-gray-950 py-1.5 px-2 rounded border border-gray-900 break-words">---</div>
+            <button id="btn-play-ai-phrase" class="w-full bg-gray-850 hover:bg-gray-800 text-emerald-400 border border-emerald-500/30 rounded py-1.5 text-xs uppercase font-bold tracking-wider transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-play"></i> ✨ <span id="setup-ai-play-btn">Ascolta in codice morse</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 pt-4 border-t border-emerald-900/30 text-center">
+        <button id="btn-start-game" class="btn-retro w-full md:w-auto bg-emerald-500 hover:bg-emerald-400 text-gray-950 retro-font text-sm py-4 px-12 rounded-lg font-bold tracking-widest uppercase transition">
+          <span id="setup-play-btn">Inizia Avventura</span> <i class="fa-solid fa-chevron-right ml-2"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- SCHERMATA FASE 1: GIOCO PLATFORM DI RACCOLTA -->
+    <div id="screen-game" class="hidden w-full max-w-4xl bg-gray-900 border-2 border-emerald-500/50 rounded-lg p-4 shadow-[0_0_20px_rgba(16,185,129,0.1)] relative">
+      <!-- Info Header del Gioco -->
+      <div class="flex justify-between items-center mb-3 text-xs md:text-sm bg-gray-950 p-2 rounded border border-gray-800">
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500 uppercase" id="game-col-let">Raccolta Lettere:</span>
+          <span id="game-collected-count" class="text-emerald-400 font-bold">0 / 20</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500 uppercase" id="game-status-label">Stato:</span>
+          <span id="game-status-text" class="text-emerald-400 animate-pulse">Cammina verso destra!</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500 uppercase" id="game-last-label">Ultimo Suono:</span>
+          <span id="game-last-char" class="text-amber-400 font-bold font-mono text-base">-</span>
+        </div>
+      </div>
+
+      <!-- Area Canvas del Gioco -->
+      <div class="relative w-full overflow-hidden bg-slate-950 border border-gray-800 rounded mb-4" style="height: 320px;">
+        <canvas id="game-canvas" width="800" height="320" class="w-full h-full block"></canvas>
+        
+        <!-- Controlli Mobile/Touch Sovrapposti -->
+        <div class="absolute bottom-3 left-3 right-3 flex justify-between md:hidden pointer-events-none">
+          <div class="flex gap-2 pointer-events-auto">
+            <button id="touch-left" class="w-12 h-12 bg-gray-800/80 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-600 active:scale-95 transition-all">
+              <i class="fa-solid fa-arrow-left text-lg"></i>
+            </button>
+            <button id="touch-right" class="w-12 h-12 bg-gray-800/80 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-600 active:scale-95 transition-all">
+              <i class="fa-solid fa-arrow-right text-lg"></i>
+            </button>
+          </div>
+          <div class="pointer-events-auto">
+            <button id="touch-jump" class="w-16 h-12 bg-gray-800/80 active:bg-emerald-500 text-white rounded-xl flex items-center justify-center border border-gray-600 active:scale-95 transition-all uppercase font-bold text-xs" id="mobile-jump-label">
+              Salta
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Informazioni Comandi -->
+      <div class="flex justify-between items-center text-xs text-gray-500">
+        <div id="game-controls-help">
+          <span class="text-emerald-500 font-bold">Comandi:</span> <kbd class="bg-gray-800 text-gray-200 px-1 py-0.5 rounded">A / D</kbd> o <kbd class="bg-gray-800 text-gray-200 px-1 py-0.5 rounded">← / →</kbd> per Muoverti, <kbd class="bg-gray-800 text-gray-200 px-1 py-0.5 rounded">Spazio / W</kbd> per Saltare.
+        </div>
+        <div id="game-objective-help">
+          Raggiungi <span class="text-emerald-400 font-bold">20 lettere</span> per sbloccare la stazione radio a destra!
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHERMATA FASE 2: TACCUINO RICEZIONE CINQUINE -->
+    <div id="screen-notebook" class="hidden w-full max-w-4xl bg-stone-900 border-2 border-amber-600/50 rounded-lg p-5 shadow-[0_0_20px_rgba(245,158,11,0.1)] relative">
+      
+      <!-- Top Desk Bar -->
+      <div class="flex justify-between items-center border-b border-amber-800/40 pb-4 mb-4">
+        <div>
+          <h2 class="retro-font text-amber-500 text-sm md:text-base uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-book-open"></i> <span id="note-title">Taccuino di Trascrizione</span>
+          </h2>
+          <p class="text-xs text-stone-400 mt-1" id="note-subtitle">Ascolta e digita le cinquine. Premi Barra Spaziatrice per trasmettere la successiva.</p>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-stone-400" id="note-status-label">STATO TRASMISSIONE</div>
+          <div id="notebook-progress" class="font-mono text-amber-400 font-bold text-lg">0 / 30 Gruppi</div>
+        </div>
+      </div>
+
+      <!-- Controls Row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-stone-950 p-4 rounded border border-stone-800">
+        <div>
+          <button id="btn-start-listening" class="btn-retro w-full bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold py-3 px-4 rounded uppercase flex items-center justify-center gap-2 transition">
+            <i class="fa-solid fa-play"></i> <span id="note-play-btn">Avvia Ricezione</span>
+          </button>
+        </div>
+        <div class="flex items-center justify-center text-center">
+          <span id="notebook-instruction" class="text-amber-300 text-xs md:text-sm animate-pulse">Premi "Avvia Ricezione" per iniziare</span>
+        </div>
+        <div>
+          <button id="btn-play-again" disabled class="w-full bg-stone-800 hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed text-amber-400 border border-amber-500/20 py-3 px-4 rounded uppercase font-bold text-sm transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-redo"></i> <span id="note-replay-btn">Riascolta Cinquina</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Taccuino Grid di Cinquine -->
+      <div id="cinquine-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 max-h-96 overflow-y-auto p-2 bg-stone-950/60 rounded border border-stone-800">
+        <!-- Generato Dinamicamente da JS: 30 Input Box per cinquine -->
+      </div>
+
+      <!-- End Actions -->
+      <div class="mt-6 pt-4 border-t border-amber-800/40 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-xs text-stone-400 max-w-md" id="note-help-text">
+          <span class="text-amber-500 font-bold">Nota:</span> Se non capisci una lettera scrivi un punto interrogativo <code class="bg-stone-800 text-amber-400 px-1 rounded font-mono">?</code>. Assicurati che ogni gruppo sia di esattamente 5 lettere prima di inviare.
+        </p>
+        <button id="btn-submit-notebook" disabled class="btn-retro w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-8 py-3 rounded-lg uppercase tracking-wide transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-clipboard-check"></i> <span id="note-submit-btn">Termina & Confronta</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- SCHERMATA RISULTATI -->
+    <div id="screen-results" class="hidden w-full max-w-4xl bg-gray-900 border-2 border-emerald-500/50 rounded-lg p-6 shadow-[0_0_25px_rgba(16,185,129,0.15)]">
+      
+      <div class="text-center mb-6">
+        <div id="result-status-badge" class="inline-block px-4 py-2 rounded-full retro-font text-xs uppercase mb-3 bg-emerald-500 text-gray-950">
+          Superato!
+        </div>
+        <h2 id="result-headline" class="retro-font text-emerald-400 text-lg md:text-xl block mb-2">"SONO IL MIGLIORE!"</h2>
+        <p id="result-subheader" class="text-sm text-gray-400">Valutazione delle tue performance Morse</p>
+      </div>
+
+      <!-- Scoreboard Big stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-gray-950 p-4 rounded border border-gray-800 text-center">
+          <div class="text-xs text-gray-500 uppercase" id="res-stat-total-lbl">Totale Lettere</div>
+          <div id="res-stat-total" class="text-2xl font-bold font-mono text-emerald-400">150</div>
+        </div>
+        <div class="bg-gray-950 p-4 rounded border border-gray-800 text-center">
+          <div class="text-xs text-gray-500 uppercase" id="res-stat-correct-lbl">Corrette</div>
+          <div id="res-stat-correct" class="text-2xl font-bold font-mono text-green-500">148</div>
+        </div>
+        <div class="bg-gray-950 p-4 rounded border border-gray-800 text-center">
+          <div class="text-xs text-gray-500 uppercase" id="res-stat-errors-lbl">Errori</div>
+          <div id="res-stat-errors" class="text-2xl font-bold font-mono text-red-500">2</div>
+        </div>
+        <div class="bg-gray-950 p-4 rounded border border-gray-800 text-center">
+          <div class="text-xs text-gray-500 uppercase" id="res-stat-accuracy-lbl">Accuratezza</div>
+          <div id="res-stat-accuracy" class="text-2xl font-bold font-mono text-blue-400">98.6%</div>
+        </div>
+      </div>
+
+      <!-- Sezione Feedback del Tutor IA ✨ -->
+      <div class="mb-6 bg-emerald-950/10 border border-emerald-500/20 rounded p-4">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3 border-b border-emerald-800/30 pb-2">
+          <div>
+            <h3 class="text-emerald-400 font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-graduation-cap"></i> <span id="res-tutor-title">Assistente e Tutor Mnemonico IA ✨</span>
+            </h3>
+            <p class="text-xs text-gray-400" id="res-tutor-desc">Lascia che l'Intelligenza Artificiale analizzi i tuoi errori e ti fornisca consigli su misura.</p>
+          </div>
+          <button id="btn-ask-tutor" class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold py-2 px-4 rounded text-xs uppercase tracking-wider transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-brain"></i> ✨ <span id="res-tutor-btn">Analizza Errori con l'IA</span>
+          </button>
+        </div>
+        
+        <div id="tutor-feedback-box" class="hidden bg-gray-950/80 p-3.5 rounded border border-emerald-800/40">
+          <div class="flex items-center gap-2 mb-2 text-emerald-400 font-bold text-xs uppercase tracking-widest animate-pulse">
+            <i class="fa-solid fa-headset"></i> <span id="res-tutor-response-title">Risposta del Maestro CW:</span>
+          </div>
+          <p id="tutor-feedback-text" class="text-emerald-100 text-sm leading-relaxed whitespace-pre-wrap font-mono">
+            Analisi in corso...
+          </p>
+        </div>
+      </div>
+
+      <!-- Titolo Confronto -->
+      <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-400 mb-3"><i class="fa-solid fa-list-check mr-2"></i><span id="res-comparison-title">Confronto Dettagliato delle Cinquine</span></h3>
+      
+      <!-- Listato Confronto Scritto/Trasmesso -->
+      <div id="result-comparison-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-80 overflow-y-auto bg-gray-950 p-4 rounded border border-gray-800 mb-6">
+        <!-- Caricato dinamicamente -->
+      </div>
+
+      <!-- Azioni Finali -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4 border-t border-gray-800">
+        <button id="btn-result-retry" class="btn-retro w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold px-8 py-3 rounded-lg uppercase tracking-wide transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-repeat"></i> <span id="res-retry-btn">Ripeti Lezione</span>
+        </button>
+        <button id="btn-result-menu" class="btn-retro w-full sm:w-auto bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-bold px-8 py-3 rounded-lg uppercase tracking-wide transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-home"></i> <span id="res-menu-btn">Menu Principale</span>
+        </button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Notification Banner -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 pointer-events-none flex flex-col gap-2"></div>
+
+  <!-- Footer -->
+  <footer class="border-t border-emerald-900/40 bg-gray-950/80 px-4 py-3 text-center text-xs text-gray-500">
+    <div id="footer-text">Radio Koch Adventure &copy; 2026 - Metodo Koch per Radioamatori</div>
+    <div class="mt-1 text-[10px] text-gray-600" id="footer-sub-text">Audio sintetizzato tramite Web Audio API in tempo reale</div>
+  </footer>
+
+  <!-- Script di logica di gioco -->
+  <script>
+    // --- DIZIONARIO DI TRADUZIONE LOCALE (Bilinguismo completo) ---
+    const I18N = {
+      it: {
+        header_sub: "Morse Learning Platformer & Copy Game",
+        hdr_stat_call: "NOMINATIVO:",
+        hdr_stat_less: "LEZIONE:",
+        hdr_stat_lev: "LIVELLO:",
+        intro_by: "PRESENTATO DA",
+        intro_desc: "Inizia il tuo percorso di addestramento telegrafico in stile arcade. Sconfiggi il rumore di fondo e padroneggia il ritmo del Metodo Koch!",
+        intro_music_on: "Musica: Attiva",
+        intro_music_off: "Musica: Spenta",
+        intro_btn_continue: "Premi per continuare",
+        setup_subtitle: "Allena il tuo orecchio nel mondo dei radioamatori. Raccogli le lettere, accendi la radio e completa le cinquine!",
+        setup_col1_title: "Profilo Operatore",
+        setup_call_label: "Nominativo (Callsign)",
+        setup_level_label: "Tolleranza Errori",
+        setup_lesson_label: "Lezione Koch (Progressiva)",
+        setup_lesson_inc: "Lettere incluse:",
+        setup_col2_title: "Impostazioni Audio",
+        setup_wpm_label: "Velocità caratteri (WPM)",
+        setup_eff_label: "Spaziatura Farnsworth (WPM)",
+        setup_freq_label: "Frequenza Nota (Hz)",
+        setup_test_btn: "Prova Audio (Tasto K)",
+        setup_test_active: "Trasmissione K (-.-)...",
+        setup_col3_title: "Esercizio Personalizzato ✨",
+        setup_ai_desc: "Lascia che l'IA crei un testo mnemonico o un finto QSO radio usando solo le lettere apprese fino ad ora!",
+        setup_ai_btn: "Genera Frase Koch",
+        setup_ai_loading: "Generando con IA...",
+        setup_ai_wait: "Attendere, l'IA sta componendo l'esercizio...",
+        setup_ai_result_title: "Testo IA Generato:",
+        setup_ai_play_btn: "Ascolta in codice morse",
+        setup_ai_play_active: "In riproduzione...",
+        setup_play_btn: "Inizia Avventura",
+        game_col_let: "Raccolta Lettere:",
+        game_status_label: "Stato:",
+        game_status_walk: "Cammina verso destra!",
+        game_status_radio: "Raggiungi la radio a destra!",
+        game_last_label: "Ultimo Suono:",
+        game_controls_help: "<span class='text-emerald-500 font-bold'>Comandi:</span> <kbd class='bg-gray-800 text-gray-200 px-1 py-0.5 rounded'>A / D</kbd> o <kbd class='bg-gray-800 text-gray-200 px-1 py-0.5 rounded'>&larr; / &rarr;</kbd> per Muoverti, <kbd class='bg-gray-800 text-gray-200 px-1 py-0.5 rounded'>Spazio / W</kbd> per Saltare.",
+        game_objective_help: "Raggiungi <span class='text-emerald-400 font-bold'>20 lettere</span> per sbloccare la stazione radio a destra!",
+        mobile_jump_label: "Salta",
+        note_title: "Taccuino di Trascrizione",
+        note_subtitle: "Ascolta e digita le cinquine. Premi <strong class='text-amber-400'>Barra Spaziatrice</strong> per trasmettere la successiva.",
+        note_status_label: "STATO TRASMISSIONE",
+        note_play_btn: "Avvia Ricezione",
+        note_replay_btn: "Riascolta Cinquina",
+        note_instruction_start: "Premi \"Avvia Ricezione\" per iniziare",
+        note_instruction_rx: "🔴 Ricezione Cinquina #{{num}} in corso...",
+        note_instruction_typed: "Cinquina #{{num}} trasmessa. <br>Scrivila e premi <strong class='text-amber-400'>BARRA SPAZIATRICE</strong> per la successiva!",
+        note_instruction_replay: "🔴 Riascolto Cinquina #{{num}}...",
+        note_instruction_done: "Ascolto completato! Completa la scrittura e premi Termina & Confronta.",
+        note_btn_next: "Premi Spazio",
+        note_btn_done: "Ascolto Finito",
+        note_help_text: "<span class='text-amber-500 font-bold'>Nota:</span> Se non capisci una lettera scrivi un punto interrogativo <code class='bg-stone-800 text-amber-400 px-1 rounded font-mono'>?</code>. Assicurati che ogni gruppo sia di esattamente 5 lettere prima di inviare.",
+        note_submit_btn: "Termina & Confronta",
+        res_badge_pass: "SESSIONE SUPERATA!",
+        res_badge_fail: "SESSIONE FALLITA!",
+        res_stat_total_lbl: "Totale Lettere",
+        res_stat_correct_lbl: "Corrette",
+        res_stat_errors_lbl: "Errori",
+        res_stat_accuracy_lbl: "Accuratezza",
+        res_tutor_title: "Assistente e Tutor Mnemonico IA ✨",
+        res_tutor_desc: "Lascia che l'Intelligenza Artificiale analizzi i tuoi errori e ti fornisca consigli su misura.",
+        res_tutor_btn: "Analizza Errori con l'IA",
+        res_tutor_loading: "Tutor in ascolto...",
+        res_tutor_analyzing: "Il Maestro di Telegrafia sta analizzando la tua sessione...",
+        res_tutor_response_title: "Risposta del Maestro CW:",
+        res_comparison_title: "Confronto Dettagliato delle Cinquine",
+        res_retry_btn: "Ripeti Lezione",
+        res_retry_next: "Passa a Lezione Successiva",
+        res_menu_btn: "Menu Principale",
+        footer_text: "Radio Koch Adventure &copy; 2026 - Metodo Koch per Radioamatori",
+        footer_sub_text: "Audio sintetizzato tramite Web Audio API in tempo reale",
+        toast_security_err: "⚠️ Funzione disabilitata per motivi di sicurezza!",
+        toast_dev_err: "⚠️ Strumenti di sviluppo disabilitati!",
+        toast_action_err: "⚠️ Azione protetta non consentita!",
+        toast_dev_detected: "⚠️ Strumenti di sviluppo rilevati!",
+        toast_ai_success: "Esercizio personalizzato generato con successo!",
+        toast_ai_play: "Spegni la musica intro prima di ascoltare l'esercizio!",
+        toast_game_welcome: "Benvenuto in gioco! Usa i tasti A/D o Freccia Destra/Sinistra per esplorare.",
+        toast_game_collected_20: "Hai raccolto 20 lettere! Ora vai a destra fino alla Stazione Radio!",
+        toast_game_collected_letter: "Raccolto '{{char}}'! Sentito il suono?",
+        toast_radio_reached: "Stazione Radio Raggiunta! Cambio modalità...",
+        toast_note_filled: "Hai ascoltato tutte le 30 cinquine! Compila gli ultimi campi e premi 'Termina & Confronta'.",
+        toast_note_incomplete: "Completa la cinquina corrente (5 caratteri) prima di ascoltare la successiva!",
+        toast_note_submit_err: "Compila tutte le 30 cinquine prima di inviare!",
+        toast_tutor_success: "Il Tutor IA ha completato l'analisi!",
+        toast_tutor_no_errors: "Nessun errore rilevato! Sei stato fantastico, non ho nulla da correggere. Continua così!",
+        difficulty_opt_1: "Livello 1: 0 errori (\"Sono il migliore\")",
+        difficulty_opt_2: "Livello 2: max 2 errori (\"Dai, mica male\")",
+        difficulty_opt_3: "Livello 3: max 3 errori (\"Potrei migliorare\")",
+        difficulty_opt_4: "Livello 4: max 4 errori (\"Ci riprovo\")",
+        difficulty_opt_5: "Livello 5: >5 errori (\"Ero distratto\")",
+        headline_perfect: "\"SONO IL MIGLIORE\"",
+        headline_great: "\"DAI, MICA MALE\"",
+        headline_good: "\"POTREI MIGLIORARE\"",
+        headline_ok: "\"CI RIPROVO\"",
+        headline_fail: "\"ERO DISTRATTO\"",
+        sub_perfect: "Grandioso! 0 errori registrati su 150 lettere. Sei un vero operatore telegrafico!",
+        sub_great: "Ottimo lavoro! Solo {{errors}} errori. La tua ricezione Koch è eccellente.",
+        sub_good: "Superato! Hai commesso {{errors}} errori. Un altro po' di allenamento e sarai perfetto!",
+        sub_ok: "Superato con riserva. {{errors}} errori totali. Continua così!",
+        sub_fail: "Hai commesso {{errors}} errori. Il limite impostato per il livello era {{max}}. Riprova questa lezione!"
+      },
+      en: {
+        header_sub: "Morse Learning Platformer & Copy Game",
+        hdr_stat_call: "CALLSIGN:",
+        hdr_stat_less: "LESSON:",
+        hdr_stat_lev: "LEVEL:",
+        intro_by: "PRESENTED BY",
+        intro_desc: "Start your telegraphic training in retro arcade style. Defeat the background noise and master the rhythm of the Koch Method!",
+        intro_music_on: "Music: On",
+        intro_music_off: "Music: Off",
+        intro_btn_continue: "Press to continue",
+        setup_subtitle: "Train your ears in the amateur radio world. Collect letters, activate the radio and complete the 5-char groups!",
+        setup_col1_title: "Operator Profile",
+        setup_call_label: "Callsign",
+        setup_level_label: "Error Tolerance",
+        setup_lesson_label: "Koch Lesson (Progressive)",
+        setup_lesson_inc: "Characters included:",
+        setup_col2_title: "Audio Settings",
+        setup_wpm_label: "Character Speed (WPM)",
+        setup_eff_label: "Farnsworth Spacing (WPM)",
+        setup_freq_label: "Tone Frequency (Hz)",
+        setup_test_btn: "Test Audio (K Key)",
+        setup_test_active: "Transmitting K (-.-)...",
+        setup_col3_title: "AI Custom Exercise ✨",
+        setup_ai_desc: "Let the AI generate a mnemonic text or a mock radio QSO using only the letters learned so far!",
+        setup_ai_btn: "Generate Koch Phrase",
+        setup_ai_loading: "Generating with AI...",
+        setup_ai_wait: "Please wait, the AI is composing the exercise...",
+        setup_ai_result_title: "AI Generated Text:",
+        setup_ai_play_btn: "Listen in Morse Code",
+        setup_ai_play_active: "Playing...",
+        setup_play_btn: "Start Adventure",
+        game_col_let: "Letters Collected:",
+        game_status_label: "Status:",
+        game_status_walk: "Walk towards the right!",
+        game_status_radio: "Reach the radio station on the right!",
+        game_last_label: "Last Sound:",
+        game_controls_help: "<span class='text-emerald-500 font-bold'>Controls:</span> <kbd class='bg-gray-800 text-gray-200 px-1 py-0.5 rounded'>A / D</kbd> or <kbd class='bg-gray-800 text-gray-200 px-1 py-0.5 rounded'>&larr; / &rarr;</kbd> to Move, <kbd class='bg-gray-800 text-gray-200 px-1 py-0.5 rounded'>Space / W</kbd> to Jump.",
+        game_objective_help: "Reach <span class='text-emerald-400 font-bold'>20 letters</span> to unlock the radio station on the right!",
+        mobile_jump_label: "Jump",
+        note_title: "Transcription Notebook",
+        note_subtitle: "Listen and type the 5-char groups. Press <strong class='text-amber-400'>Spacebar</strong> to play the next one.",
+        note_status_label: "TRANSMISSION STATUS",
+        note_play_btn: "Start Copying",
+        note_replay_btn: "Replay Group",
+        note_instruction_start: "Press \"Start Copying\" to begin",
+        note_instruction_rx: "🔴 Receiving Group #{{num}}...",
+        note_instruction_typed: "Group #{{num}} transmitted. <br>Type it and press <strong class='text-amber-400'>SPACEBAR</strong> for the next one!",
+        note_instruction_replay: "🔴 Replaying Group #{{num}}...",
+        note_instruction_done: "Copy completed! Fill the fields and click End & Compare.",
+        note_btn_next: "Press Space",
+        note_btn_done: "Copy Finished",
+        note_help_text: "<span class='text-amber-500 font-bold'>Note:</span> If you miss a letter, type a question mark <code class='bg-stone-800 text-amber-400 px-1 rounded font-mono'>?</code>. Ensure each group is exactly 5 letters before submitting.",
+        note_submit_btn: "End & Compare",
+        res_badge_pass: "SESSION PASSED!",
+        res_badge_fail: "SESSION FAILED!",
+        res_stat_total_lbl: "Total Letters",
+        res_stat_correct_lbl: "Correct",
+        res_stat_errors_lbl: "Errors",
+        res_stat_accuracy_lbl: "Accuracy",
+        res_tutor_title: "AI Mnemonic Assistant & Tutor ✨",
+        res_tutor_desc: "Let the AI analyze your errors and provide custom-tailored advice.",
+        res_tutor_btn: "Analyze Errors with AI",
+        res_tutor_loading: "Tutor listening...",
+        res_tutor_analyzing: "The CW Master is analyzing your session...",
+        res_tutor_response_title: "CW Master's Response:",
+        res_comparison_title: "Detailed Group Comparison",
+        res_retry_btn: "Retry Lesson",
+        res_retry_next: "Go to Next Lesson",
+        res_menu_btn: "Main Menu",
+        footer_text: "Radio Koch Adventure &copy; 2026 - Koch Morse Code Practice",
+        footer_sub_text: "Audio synthesized via Web Audio API in real time",
+        toast_security_err: "⚠️ Feature disabled for security reasons!",
+        toast_dev_err: "⚠️ Developer tools disabled!",
+        toast_action_err: "⚠️ Protected action not allowed!",
+        toast_dev_detected: "⚠️ Developer tools detected!",
+        toast_ai_success: "Custom exercise generated successfully!",
+        toast_ai_play: "Turn off the intro music before playing the exercise!",
+        toast_game_welcome: "Welcome to the game! Use A/D or Left/Right Arrow keys to move around.",
+        toast_game_collected_20: "You collected 20 letters! Now head right to the Radio Station!",
+        toast_game_collected_letter: "Collected '{{char}}'! Did you hear the sound?",
+        toast_radio_reached: "Radio Station Reached! Changing modes...",
+        toast_note_filled: "You listened to all 30 groups! Complete the last ones and press 'End & Compare'.",
+        toast_note_incomplete: "Complete the current group (5 characters) before listening to the next one!",
+        toast_note_submit_err: "Fill in all 30 groups before submitting!",
+        toast_tutor_success: "AI Tutor has completed the analysis!",
+        toast_tutor_no_errors: "No errors detected! You did great, I have nothing to correct. Keep it up!",
+        difficulty_opt_1: "Level 1: 0 errors (\"I am the best\")",
+        difficulty_opt_2: "Level 2: max 2 errors (\"Not too bad\")",
+        difficulty_opt_3: "Level 3: max 3 errors (\"Could improve\")",
+        difficulty_opt_4: "Level 4: max 4 errors (\"Let me retry\")",
+        difficulty_opt_5: "Level 5: >5 errors (\"Distracted\")",
+        headline_perfect: "\"I AM THE BEST\"",
+        headline_great: "\"NOT TOO BAD\"",
+        headline_good: "\"COULD IMPROVE\"",
+        headline_ok: "\"LET ME RETRY\"",
+        headline_fail: "\"DISTRACTED\"",
+        sub_perfect: "Awesome! 0 errors recorded out of 150 letters. You are a true CW operator!",
+        sub_great: "Great job! Only {{errors}} errors. Your Koch reception is excellent.",
+        sub_good: "Passed! You made {{errors}} errors. A little more practice and you will be perfect!",
+        sub_ok: "Passed with reservation. {{errors}} total errors. Keep it up!",
+        sub_fail: "You made {{errors}} errors. The level limit was {{max}}. Retry this lesson!"
+      }
+    };
+
+    // --- GEMINI INTEGRATION & CONFIG ---
+    const apiKey = ""; // API Key vuota, fornita a runtime dall'ambiente
+    
+    // 1. Disabilita il menu contestuale del tasto destro
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showToast(translate("toast_security_err"), "error");
+    });
+
+    // 2. Disabilita tasti di scelta rapida per ispezione, salvataggio e sorgente pagina
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F12') {
+        e.preventDefault();
+        showToast(translate("toast_dev_err"), "error");
+        return false;
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+        e.preventDefault();
+        showToast(translate("toast_dev_err"), "error");
+        return false;
+      }
+      if (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        showToast(translate("toast_action_err"), "error");
+        return false;
+      }
+    });
+
+    // 3. Anti-Debugging Attivo (Leggero e non distruttivo)
+    setInterval(() => {
+      const startTime = performance.now();
+      debugger;
+      const endTime = performance.now();
+      if (endTime - startTime > 100) {
+        showToast(translate("toast_dev_detected"), "error");
+      }
+    }, 1000);
+
+    // --- STREAMING_CHUNK: Motore audio Retro e Chiptune ---
+    // --- CHIPTUNE ARCADE MUSIC ENGINE ---
+    let introMusicInterval = null;
+    let isMusicMuted = false;
+    let musicStep = 0;
+    let musicStarted = false;
+
+    // Frequenze per la melodia arpeggiata retro (C-Major, F-Major, G-Major)
+    const melodyFreqs = [
+      261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 261.63, 392.00,
+      349.23, 440.00, 523.25, 698.46, 523.25, 440.00, 349.23, 523.25,
+      392.00, 493.88, 587.33, 783.99, 587.33, 493.88, 392.00, 587.33,
+      261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 392.00, 493.88
+    ];
+
+    const bassFreqs = [
+      130.81, 130.81, 164.81, 164.81, 196.00, 196.00, 130.81, 196.00,
+      174.61, 174.61, 220.00, 220.00, 261.63, 261.63, 174.61, 261.63,
+      196.00, 196.00, 246.94, 246.94, 293.66, 293.66, 196.00, 293.66,
+      130.81, 130.81, 164.81, 164.81, 196.00, 196.00, 196.00, 196.00
+    ];
+
+    function playChiptuneTone(freq, type, duration, volume) {
+      if (!audioCtx || isMusicMuted) return;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      
+      gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function startIntroMusic() {
+      initAudio();
+      if (introMusicInterval) return;
+      isMusicMuted = false;
+      
+      // Assicura che la UI rifletta lo stato di attivazione
+      const toggleMusicBtn = document.getElementById('btn-toggle-music');
+      if (toggleMusicBtn) {
+        toggleMusicBtn.innerHTML = `<i class="fa-solid fa-volume-high text-sm"></i> <span>${translate("intro_music_on")}</span>`;
+        toggleMusicBtn.classList.add('text-emerald-400', 'border-emerald-900');
+        toggleMusicBtn.classList.remove('text-gray-500', 'border-gray-800');
+      }
+
+      introMusicInterval = setInterval(() => {
+        if (isMusicMuted) return;
+        
+        // Melodia triangle (suono dolce tipo GameBoy)
+        const mFreq = melodyFreqs[musicStep % melodyFreqs.length];
+        playChiptuneTone(mFreq, 'triangle', 0.18, 0.12);
+        
+        // Basso sawtooth (suono graffiante arcade)
+        const bFreq = bassFreqs[musicStep % bassFreqs.length];
+        playChiptuneTone(bFreq, 'sawtooth', 0.12, 0.05);
+        
+        musicStep++;
+      }, 180);
+    }
+
+    // Ferma la musica intro in modo sicuro e aggiorna lo stato visivo
+    function stopIntroMusic() {
+      if (introMusicInterval) {
+        clearInterval(introMusicInterval);
+        introMusicInterval = null;
+      }
+      isMusicMuted = true; // Impedisce toni rimanenti
+      const toggleMusicBtn = document.getElementById('btn-toggle-music');
+      if (toggleMusicBtn) {
+        toggleMusicBtn.innerHTML = `<i class="fa-solid fa-volume-xmark text-sm"></i> <span>${translate("intro_music_off")}</span>`;
+        toggleMusicBtn.classList.remove('text-emerald-400', 'border-emerald-900');
+        toggleMusicBtn.classList.add('text-gray-500', 'border-gray-800');
+      }
+    }
+
+    function tryStartIntroMusic() {
+      if (!musicStarted && !isMusicMuted) {
+        initAudio();
+        startIntroMusic();
+        musicStarted = true;
+      }
+    }
+
+    // Esegue una chiamata API con Exponential Backoff (fino a 5 tentativi)
+    async function callGemini(payload) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      let delay = 1000;
+      for (let i = 0; i < 5; i++) {
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return data;
+          } else {
+            // Blocco immediato su errori di parametrizzazione (es. 400), evita loop a vuoto
+            if (response.status !== 429 && response.status !== 503) {
+              const errData = await response.json().catch(() => ({}));
+              throw new Error(errData.error?.message || `Errore API: ${response.status}`);
+            }
+          }
+        } catch (e) {
+          if (i === 4 || (e.message && e.message.includes("API:"))) {
+            throw e;
+          }
+        }
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+      }
+      throw new Error("Impossibile connettersi al servizio di IA. Riprova più tardi.");
+    }
+
+    // --- DIZIONARIO MORSE COMPLETO ---
+    const MORSE_DICT = {
+      'A': '.-',    'B': '-...',  'C': '-.-.',  'D': '-..',   'E': '.',
+      'F': '..-.',  'G': '--.',   'H': '....',  'I': '..',    'J': '.---',
+      'K': '-.-',   'L': '.-..',  'M': '--',    'N': '-.',    'O': '---',
+      'P': '.--.',  'Q': '--.-',  'R': '.-.',   'S': '...',   'T': '-',
+      'U': '..-',   'V': '...-',  'W': '.--',   'X': '-..-',  'Y': '-.--',
+      'Z': '--..',
+      '1': '.----', '2': '..---', '3': '...--', '4': '....-', '5': '.....',
+      '6': '-....', '7': '--...', '8': '---..', '9': '----.', '0': '-----',
+      '.': '.-.-.-', ',': '--..--', '?': '..--..', '/': '-..-.'
+    };
+
+    // Ordine di introduzione caratteri secondo il Metodo Koch standard
+    const KOCH_SEQUENCE = [
+      'K', 'M', 'R', 'S', 'U', 'A', 'P', 'T', 'L', 'O', 'W', 'I', '.', 'N', 'J', 
+      'E', 'F', '0', 'Y', 'V', ',', 'G', '5', '/', 'Q', '9', 'Z', 'H', '3', '8', 
+      'B', '?', '4', '2', '7', 'C', '1', 'D', '6', 'X'
+    ];
+
+    // Valutazione dei livelli
+    const DIFFICULTIES = {
+      '1': { maxErrors: 0, textKey: "headline_perfect", badgeColor: "bg-emerald-500 text-gray-950" },
+      '2': { maxErrors: 2, textKey: "headline_great", badgeColor: "bg-teal-500 text-gray-950" },
+      '3': { maxErrors: 3, textKey: "headline_good", badgeColor: "bg-amber-500 text-gray-950" },
+      '4': { maxErrors: 4, textKey: "headline_ok", badgeColor: "bg-orange-500 text-gray-950" },
+      '5': { maxErrors: 999, textKey: "headline_fail", badgeColor: "bg-red-500 text-gray-950" }
+    };
+
+    // --- VARIABILI DI STATO ---
+    let state = {
+      language: "it", // Lingua di default: Italiano
+      callsign: "IK5JRZ",
+      difficultyLevel: "5", // Default: Livello 5
+      kochLesson: 1, // Lezione 1: K e M
+      currentChars: ['K', 'M'],
+      wpm: 18,
+      effWpm: 12,
+      freq: 650,
+      
+      // Fase 1: Piattaforma
+      collectedLetters: [],
+      collectedCount: 0,
+      targetLettersCount: 20,
+      
+      // Fase 2: Taccuino
+      transmittedGroups: [], // Lista di 30 stringhe (cinquine)
+      userAnswers: Array(30).fill(""),
+      currentListeningIndex: -1, // Indice della cinquina attualmente riprodotta
+      playbackActive: false,
+
+      // IA Esercizi
+      aiGeneratedPhrase: ""
+    };
+
+    // --- AUDIO SINTETIZZATORE WEB AUDIO API ---
+    let audioCtx = null;
+    let activeSource = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    // Suona una singola lettera Morse in tempo reale
+    function playMorse(char, onEnded = null) {
+      initAudio();
+      const code = MORSE_DICT[char.toUpperCase()];
+      if (!code) {
+        if (onEnded) onEnded();
+        return;
+      }
+
+      // Calcola i tempi basandosi sul WPM
+      const dotDuration = 1.2 / state.wpm; 
+      
+      // Spaziatura di Farnsworth calcola la durata di pause tra caratteri basata su effWpm
+      const farnsworthFactor = (state.effWpm < state.wpm) ? (1.2 / state.effWpm) / (1.2 / state.wpm) : 1.0;
+      const charSpaceDuration = 3 * dotDuration * farnsworthFactor;
+
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.value = state.freq;
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      let now = audioCtx.currentTime;
+      gainNode.gain.setValueAtTime(0, now);
+
+      for (let i = 0; i < code.length; i++) {
+        const symbol = code[i];
+        const symDuration = (symbol === '.') ? dotDuration : (dotDuration * 3);
+        
+        // Note On (con rampa per evitare clic digitali)
+        gainNode.gain.setValueAtTime(0, now);
+        gainNode.gain.linearRampToValueAtTime(0.3, now + 0.005);
+        
+        // Note Off
+        now += symDuration;
+        gainNode.gain.setValueAtTime(0.3, now);
+        gainNode.gain.linearRampToValueAtTime(0, now + 0.005);
+        
+        // Pausa tra elementi della stessa lettera (1 dot duration)
+        now += dotDuration;
+      }
+
+      osc.start();
+      osc.stop(now);
+      
+      osc.onended = () => {
+        setTimeout(() => {
+          if (onEnded) onEnded();
+        }, charSpaceDuration * 1000);
+      };
+    }
+
+    // Suona un'intera sequenza (parola o cinquina o frase IA)
+    function playMorseWord(word, onWordComplete = null) {
+      initAudio();
+      let letters = word.toUpperCase().split('');
+      let currentIdx = 0;
+
+      function playNext() {
+        if (currentIdx < letters.length) {
+          const l = letters[currentIdx];
+          currentIdx++;
+          // Se e uno spazio, facciamo una pausa piu lunga
+          if (l === ' ') {
+            const spaceDur = (7.0 * (1.2 / state.effWpm)) * 1000;
+            setTimeout(playNext, spaceDur);
+          } else {
+            playMorse(l, playNext);
+          }
+        } else {
+          if (onWordComplete) onWordComplete();
+        }
+      }
+      playNext();
+    }
+
+    // Genera proceduralmente un effetto applauso retro + fanfara festosa (8-bit)
+    function playSuccessSound() {
+      initAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+      
+      // Fanfara di Vittoria
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // Do5, Mi5, Sol5, Do6
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.10);
+        gainNode.gain.setValueAtTime(0, now + idx * 0.10);
+        gainNode.gain.linearRampToValueAtTime(0.12, now + idx * 0.10 + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.10 + 0.4);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start(now + idx * 0.10);
+        osc.stop(now + idx * 0.10 + 0.45);
+      });
+
+      // Applauso procedurale tramite impulsi densi di White Noise filtrati (Claps)
+      try {
+        const bufferSize = audioCtx.sampleRate * 1.5;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1; // Rumore bianco puro
+        }
+
+        for (let i = 0; i < 9; i++) {
+          const noiseNode = audioCtx.createBufferSource();
+          noiseNode.buffer = buffer;
+          
+          const noiseFilter = audioCtx.createBiquadFilter();
+          noiseFilter.type = 'bandpass';
+          noiseFilter.frequency.setValueAtTime(800 + Math.random() * 500, now + i * 0.08);
+          noiseFilter.Q.value = 2.0;
+
+          const noiseGain = audioCtx.createGain();
+          noiseGain.gain.setValueAtTime(0, now + i * 0.08);
+          const volume = 0.07 / (1 + i * 0.1);
+          noiseGain.gain.linearRampToValueAtTime(volume, now + i * 0.08 + 0.03);
+          noiseGain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.35);
+
+          noiseNode.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          gainNode.connect(audioCtx.destination);
+          
+          noiseNode.start(now + i * 0.08);
+          noiseNode.stop(now + i * 0.08 + 0.4);
+        }
+      } catch (err) {
+        console.warn("Impossibile generare l'applauso procedurale:", err);
+      }
+    }
+
+    // Genera proceduralmente un effetto fischio/disappunto ("buuu") e sad slide
+    function playFailureSound() {
+      initAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+
+      // Pitch sliding triste ("wah-wah" calante)
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, now); // La3
+      osc.frequency.linearRampToValueAtTime(90, now + 1.2);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(500, now);
+      filter.frequency.exponentialRampToValueAtTime(120, now + 1.2);
+
+      gainNode.gain.setValueAtTime(0.12, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+      osc.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 1.2);
+
+      // Rumore di sottofondo tipo "Buuuuu"
+      try {
+        const bufferSize = audioCtx.sampleRate * 2.0;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const noiseNode = audioCtx.createBufferSource();
+        noiseNode.buffer = buffer;
+
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(140, now);
+        noiseFilter.frequency.linearRampToValueAtTime(100, now + 1.6);
+        noiseFilter.Q.value = 3.5;
+
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0, now);
+        noiseGain.gain.linearRampToValueAtTime(0.20, now + 0.2);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+
+        noiseNode.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        gainNode.connect(audioCtx.destination);
+        
+        noiseNode.start(now);
+        noiseNode.stop(now + 2.0);
+      } catch (err) {
+        console.warn("Impossibile generare il buuu procedurale:", err);
+      }
+    }
+
+    // --- FUNZIONE DI SUPPORTO ALLA TRADUZIONE ---
+    function translate(key, replacements = {}) {
+      const dict = I18N[state.language];
+      if (!dict) return key;
+      let text = dict[key] || key;
+      for (const [placeholder, value] of Object.entries(replacements)) {
+        text = text.replace(`{{${placeholder}}}`, value);
+      }
+      return text;
+    }
+
+    // Aggiorna l'intera interfaccia utente in base alla lingua selezionata
+    function updateLanguageUI() {
+      // 1. Traduzione degli elementi HTML statici tramite ID
+      const mappings = {
+        "header-sub": "header_sub",
+        "hdr-stat-call": "hdr_stat_call",
+        "hdr-stat-less": "hdr_stat_less",
+        "hdr-stat-lev": "hdr_stat_lev",
+        "intro-by": "intro_by",
+        "intro-desc": "intro_desc",
+        "intro-btn-continue": "intro_btn_continue",
+        "setup-subtitle": "setup-subtitle",
+        "setup-col1-title": "setup-col1-title",
+        "setup-call-label": "setup-call-label",
+        "setup-level-label": "setup-level-label",
+        "setup-lesson-label": "setup-lesson-label",
+        "setup-lesson-inc": "setup-lesson-inc",
+        "setup-col2-title": "setup-col2-title",
+        "setup-wpm-label": "setup-wpm-label",
+        "setup-eff-label": "setup-eff-label",
+        "setup-freq-label": "setup-freq-label",
+        "setup-col3-title": "setup-col3-title",
+        "setup-ai-desc": "setup-ai-desc",
+        "setup-ai-result-title": "setup-ai-result-title",
+        "setup-play-btn": "setup-play-btn",
+        "game-col-let": "game-col-let",
+        "game-status-label": "game-status-label",
+        "game-last-label": "game-last-label",
+        "game-controls-help": "game-controls-help",
+        "game-objective-help": "game-objective-help",
+        "mobile-jump-label": "mobile-jump-label",
+        "note-title": "note-title",
+        "note-subtitle": "note-subtitle",
+        "note-status-label": "note-status-label",
+        "note-play-btn": "note-play-btn",
+        "note-replay-btn": "note-replay-btn",
+        "note-help-text": "note-help-text",
+        "note-submit-btn": "note-submit-btn",
+        "res-stat-total-lbl": "res-stat-total-lbl",
+        "res-stat-correct-lbl": "res-stat-correct-lbl",
+        "res-stat-errors-lbl": "res-stat-errors-lbl",
+        "res-stat-accuracy-lbl": "res-stat-accuracy-lbl",
+        "res-tutor-title": "res-tutor-title",
+        "res-tutor-desc": "res-tutor-desc",
+        "res-tutor-btn": "res-tutor-btn",
+        "res-tutor-response-title": "res-tutor-response-title",
+        "res-comparison-title": "res-comparison-title",
+        "res-retry-btn": "res-retry-btn",
+        "res-menu-btn": "res-menu-btn",
+        "footer-text": "footer_text",
+        "footer-sub-text": "footer_sub_text"
+      };
+
+      for (const [id, key] of Object.entries(mappings)) {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = translate(key);
+      }
+
+      // Aggiorna pulsante musica
+      const musicLabel = document.getElementById("intro-music-label");
+      if (musicLabel) {
+        musicLabel.innerText = isMusicMuted ? translate("intro_music_off") : translate("intro_music_on");
+      }
+
+      // Aggiorna testo di caricamento del test audio
+      const testBtn = document.getElementById("btn-test-audio");
+      if (testBtn && !testBtn.disabled) {
+        testBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i> ${translate("setup-test-btn")}`;
+      }
+
+      // Aggiorna selettore della tolleranza errori
+      const levelSelect = document.getElementById("setup-level");
+      if (levelSelect) {
+        const currentVal = levelSelect.value || "5";
+        levelSelect.innerHTML = `
+          <option value="1">${translate("difficulty_opt_1")}</option>
+          <option value="2">${translate("difficulty_opt_2")}</option>
+          <option value="3">${translate("difficulty_opt_3")}</option>
+          <option value="4">${translate("difficulty_opt_4")}</option>
+          <option value="5">${translate("difficulty_opt_5")}</option>
+        `;
+        levelSelect.value = currentVal;
+      }
+
+      // Aggiorna pulsante AI Esercizi
+      const aiBtn = document.getElementById("btn-generate-phrase");
+      if (aiBtn && !aiBtn.disabled) {
+        aiBtn.innerHTML = `<i class="fa-solid fa-sparkles"></i> ✨ ${translate("setup-ai-btn")}`;
+      }
+
+      const aiPlayBtn = document.getElementById("btn-play-ai-phrase");
+      if (aiPlayBtn && !aiPlayBtn.disabled) {
+        aiPlayBtn.innerHTML = `<i class="fa-solid fa-play"></i> ✨ ${translate("setup-ai-play-btn")}`;
+      }
+
+      // Aggiorna lezioni nel menu
+      buildLessonSelect();
+
+      // Aggiorna instruzioni del taccuino
+      updateNotebookInstructions();
+    }
+
+    // Cambia lingua dell'applicazione
+    function changeLanguage(lang) {
+      state.language = lang;
+      
+      const btnIt = document.getElementById("lang-btn-it");
+      const btnEn = document.getElementById("lang-btn-en");
+      
+      if (lang === "it") {
+        btnIt.className = "px-2.5 py-1 rounded font-bold transition duration-150 bg-emerald-500 text-gray-950";
+        btnEn.className = "px-2.5 py-1 rounded font-bold transition duration-150 text-gray-400 hover:text-white";
+      } else {
+        btnEn.className = "px-2.5 py-1 rounded font-bold transition duration-150 bg-emerald-500 text-gray-950";
+        btnIt.className = "px-2.5 py-1 rounded font-bold transition duration-150 text-gray-400 hover:text-white";
+      }
+
+      updateLanguageUI();
+    }
+
+    function updateNotebookInstructions() {
+      const instr = document.getElementById('notebook-instruction');
+      if (!instr) return;
+
+      if (state.currentListeningIndex === -1) {
+        instr.innerText = translate("note_instruction_start");
+      } else if (state.playbackActive) {
+        instr.innerText = translate("note_instruction_rx", { num: state.currentListeningIndex + 1 });
+      } else {
+        instr.innerHTML = translate("note_instruction_typed", { num: state.currentListeningIndex + 1 });
+      }
+
+      const playBtn = document.getElementById('btn-start-listening');
+      if (playBtn) {
+        if (state.currentListeningIndex === -1) {
+          playBtn.innerHTML = `<i class="fa-solid fa-play"></i> ${translate("note_play_btn")}`;
+        } else if (state.currentListeningIndex < 29) {
+          playBtn.innerHTML = `<i class="fa-solid fa-forward"></i> ${translate("note_btn_next")}`;
+        } else {
+          playBtn.innerHTML = `<i class="fa-solid fa-check"></i> ${translate("note_btn_done")}`;
+        }
+      }
+
+      const replayBtn = document.getElementById('btn-play-again');
+      if (replayBtn) {
+        replayBtn.innerHTML = `<i class="fa-solid fa-redo"></i> ${translate("note_replay-btn")}`;
+      }
+    }
+
+    // --- TOAST NOTIFICATIONS ---
+    function showToast(message, type = "success") {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `p-4 rounded shadow-lg border text-sm font-bold flex items-center gap-2 transition-all transform translate-y-4 opacity-0 max-w-xs pointer-events-auto`;
+      
+      if (type === "success") {
+        toast.className += " bg-emerald-950 border-emerald-500 text-emerald-400";
+        toast.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> ${message}`;
+      } else if (type === "info") {
+        toast.className += " bg-gray-950 border-blue-500 text-blue-400";
+        toast.innerHTML = `<i class="fa-solid fa-circle-info text-blue-500"></i> ${message}`;
+      } else {
+        toast.className += " bg-red-950 border-red-500 text-red-400";
+        toast.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-500"></i> ${message}`;
+      }
+      
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+      }, 50);
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-4', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // --- INIZIALIZZAZIONE SELEZIONE LEZIONE (METODO KOCH) ---
+    function buildLessonSelect() {
+      const select = document.getElementById('setup-lesson');
+      if (!select) return;
+      const currentVal = select.value || "1";
+      select.innerHTML = "";
+      for (let i = 1; i <= KOCH_SEQUENCE.length - 1; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        const currentChars = KOCH_SEQUENCE.slice(0, i + 1);
+        
+        // Localizzazione della parola lezione
+        const lessonWord = state.language === "it" ? "Lezione" : "Lesson";
+        const letterWord = state.language === "it" ? "lettere" : "letters";
+        option.innerText = `${lessonWord} ${i}: ${currentChars[currentChars.length-1]} (Tot. ${i+1} ${letterWord})`;
+        select.appendChild(option);
+      }
+      
+      select.value = currentVal;
+      
+      // Update info box on change
+      select.onchange = (e) => {
+        const lessonVal = parseInt(e.target.value);
+        state.kochLesson = lessonVal;
+        state.currentChars = KOCH_SEQUENCE.slice(0, lessonVal + 1);
+        document.getElementById('setup-lesson-chars').innerText = state.currentChars.join(' ');
+        document.getElementById('ai-exercise-box').classList.add('hidden');
+      };
+
+      state.kochLesson = parseInt(currentVal);
+      state.currentChars = KOCH_SEQUENCE.slice(0, state.kochLesson + 1);
+      document.getElementById('setup-lesson-chars').innerText = state.currentChars.join(' ');
+    }
+
+    // --- CHIAMATE GEMINI API ---
+
+    // 1. Generatore di Frase Esercizio Personalizzato ✨
+    document.getElementById('btn-generate-phrase').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-generate-phrase');
+      const box = document.getElementById('ai-exercise-box');
+      const textDisplay = document.getElementById('ai-generated-text');
+      
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> ${translate("setup-ai-loading")}`;
+      box.classList.remove('hidden');
+      textDisplay.innerText = translate("setup-ai-wait");
+
+      let promptText = "";
+      let systemPrompt = "";
+
+      if (state.language === "it") {
+        promptText = `Genera un breve esercizio o finto messaggio radio (QSO) di massimo 5 parole usando ESCLUSIVAMENTE una combinazione di questi caratteri (oltre allo spazio): ${state.currentChars.join(', ')}. Puoi ripetere i caratteri a piacimento. Rispondi RIGIDAMENTE solo ed esclusivamente con il testo generato in lettere maiuscole, senza spiegazioni, introduzioni o punteggiature non consentite.`;
+        systemPrompt = "Sei un generatore automatico di esercizi per radioamatori che imparano il Morse con il metodo Koch. Generi frasi contenenti solo ed esclusivamente le lettere indicate dall'utente.";
+      } else {
+        promptText = `Generate a short exercise or fake radio message (QSO) of maximum 5 words using EXCLUSIVELY a combination of these characters (plus spaces): ${state.currentChars.join(', ')}. You can repeat characters at will. Respond RIGIDLY only and exclusively with the generated uppercase text, without explanations, intros, or disallowed punctuation marks.`;
+        systemPrompt = "You are an automatic generator of exercises for radio amateurs learning Morse code using the Koch method. You generate phrases containing only and exclusively the letters specified by the user.";
+      }
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+      };
+
+      try {
+        const result = await callGemini(payload);
+        const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+        
+        const allowed = [...state.currentChars, ' '];
+        let sanitizedText = aiText.toUpperCase().split('').filter(c => allowed.includes(c)).join('').trim();
+        
+        if (!sanitizedText) {
+          sanitizedText = Array(4).fill(0).map(() => {
+            return Array(5).fill(0).map(() => state.currentChars[Math.floor(Math.random() * state.currentChars.length)]).join('');
+          }).join(' ');
+        }
+
+        state.aiGeneratedPhrase = sanitizedText;
+        textDisplay.innerText = sanitizedText;
+        showToast(translate("toast_ai_success"), "success");
+      } catch (err) {
+        textDisplay.innerText = state.language === "it" ? "Errore durante la generazione." : "Error during generation.";
+        showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> ✨ ${translate("setup-ai-btn")}`;
+      }
+    });
+
+    // Ascolto della frase generata dall'IA
+    document.getElementById('btn-play-ai-phrase').addEventListener('click', () => {
+      if (!state.aiGeneratedPhrase) return;
+      if (!isMusicMuted) {
+        showToast(translate("toast_ai_play"), "error");
+        return;
+      }
+      
+      const playBtn = document.getElementById('btn-play-ai-phrase');
+      
+      playBtn.disabled = true;
+      playBtn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> ${translate("setup-ai-play-active")}`;
+
+      state.wpm = parseInt(document.getElementById('setup-wpm').value);
+      state.effWpm = parseInt(document.getElementById('setup-eff-wpm').value);
+      state.freq = parseInt(document.getElementById('setup-freq').value);
+
+      playMorseWord(state.aiGeneratedPhrase, () => {
+        playBtn.disabled = false;
+        playBtn.innerHTML = `<i class="fa-solid fa-play"></i> ✨ ${translate("setup-ai-play-btn")}`;
+      });
+    });
+
+    // 2. Richiesta del Feedback del Tutor IA ✨
+    document.getElementById('btn-ask-tutor').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-ask-tutor');
+      const box = document.getElementById('tutor-feedback-box');
+      const textDisplay = document.getElementById('tutor-feedback-text');
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> ${translate("res-tutor-loading")}`;
+      box.classList.remove('hidden');
+      textDisplay.innerText = translate("res-tutor-analyzing");
+
+      let errorSummary = "";
+      for (let i = 0; i < 30; i++) {
+        const transmitted = state.transmittedGroups[i];
+        const userTyped = state.userAnswers[i] || "?????";
+        if (transmitted !== userTyped) {
+          errorSummary += `- Group #${i+1}: Sent '${transmitted}' -> Typed by user '${userTyped}'\n`;
+        }
+      }
+
+      if (!errorSummary) {
+        textDisplay.innerText = translate("toast_tutor_no_errors");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-brain"></i> ✨ ${translate("res-tutor-btn")}`;
+        return;
+      }
+
+      let promptText = "";
+      let systemPrompt = "";
+
+      if (state.language === "it") {
+        promptText = `Ciao Master! Sto studiando il Morse con il metodo Koch (Lezione attiva: ${state.kochLesson}). Ecco gli errori che ho commesso su 30 cinquine trasmesse:\n\n${errorSummary}\nAnalizza brevemente quali caratteri ho confuso di più (ad esempio se scambio lettere con suono simile o ritmo opposto) e dammi una regola mnemonica facilissima, un trucco o un consiglio in italiano per aiutarmi a superare questa lezione con 0 errori. Sii conciso, incoraggiante ed evita spiegazioni lunghe.`;
+        systemPrompt = "Sei un esperto radioamatore d'epoca e saggio mentore di telegrafia (CW Master). Aiuti gli allievi che commettono errori con trucchi di memorizzazione ritmica e acustica, con un tono amichevole e appassionato.";
+      } else {
+        promptText = `Hello Master! I am studying Morse with the Koch method (Current lesson: ${state.kochLesson}). Here are the errors I made out of 30 groups transmitted:\n\n${errorSummary}\nBriefly analyze which characters I confused the most (for example, if I mix up letters with similar sounds or opposite rhythms) and give me an extremely easy mnemonic rule, a trick, or advice in English to help me pass this lesson with 0 errors. Be concise, encouraging, and avoid long explanations.`;
+        systemPrompt = "You are a vintage experienced radio amateur and wise telegraphy mentor (CW Master). You help students who make mistakes with rhythmic and acoustic memory tricks, using a friendly and passionate tone.";
+      }
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+      };
+
+      try {
+        const result = await callGemini(payload);
+        const feedback = result.candidates?.[0]?.content?.parts?.[0]?.text || "No feedback generated.";
+        textDisplay.innerText = feedback;
+        showToast(translate("toast_tutor_success"), "success");
+      } catch (err) {
+        textDisplay.innerText = state.language === "it" ? "Impossibile ottenere il feedback al momento." : "Unable to get feedback at the moment.";
+        showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-brain"></i> ✨ ${translate("res-tutor-btn")}`;
+      }
+    });
+
+    // --- GAME ENGINE: FASE 1 (PLATFORMER COLLECTION) ---
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    let animationId = null;
+    let keys = {};
+    
+    // Oggetti di gioco
+    let player = {
+      x: 100,
+      y: 200,
+      width: 24,
+      height: 38,
+      vx: 0,
+      vy: 0,
+      isGrounded: false,
+      speed: 4,
+      jumpForce: -10,
+      facingRight: true,
+      frame: 0
+    };
+
+    let groundY = 270;
+    let cameraX = 0;
+    let gameLetters = [];
+    let backgroundElements = [];
+    let radioStation = { x: 3000, y: groundY - 60, width: 60, height: 60, reached: false };
+
+    // Genera mondo procedurale
+    function initGameWorld() {
+      player.x = 100;
+      player.y = groundY - player.height;
+      player.vx = 0;
+      player.vy = 0;
+      cameraX = 0;
+      state.collectedCount = 0;
+      state.collectedLetters = [];
+      document.getElementById('game-collected-count').innerText = "0 / 20";
+      document.getElementById('game-last-char').innerText = "-";
+      document.getElementById('game-status-text').innerText = translate("game_status_walk");
+      
+      gameLetters = [];
+      backgroundElements = [];
+      radioStation.reached = false;
+      radioStation.x = 2400;
+
+      for (let x = 150; x < radioStation.x; x += 180) {
+        backgroundElements.push({
+          type: (Math.random() > 0.4) ? 'telegraph-pole' : 'antenna',
+          x: x + (Math.random() * 40 - 20),
+          y: groundY
+        });
+      }
+
+      for (let i = 0; i < 25; i++) {
+        const randomChar = state.currentChars[Math.floor(Math.random() * state.currentChars.length)];
+        gameLetters.push({
+          char: randomChar,
+          x: 300 + (i * 80) + (Math.random() * 30),
+          y: groundY - 50 - (Math.random() * 80),
+          collected: false,
+          radius: 15,
+          bobOffset: Math.random() * Math.PI
+        });
+      }
+    }
+
+    // Loop principale del gioco canvas
+    function gameLoop() {
+      updateGame();
+      drawGame();
+      animationId = requestAnimationFrame(gameLoop);
+    }
+
+    function updateGame() {
+      // Movimento Giocatore
+      if (keys['ArrowLeft'] || keys['KeyA'] || keys['leftActive']) {
+        player.vx = -player.speed;
+        player.facingRight = false;
+        player.frame += 0.15;
+      } else if (keys['ArrowRight'] || keys['KeyD'] || keys['rightActive']) {
+        player.vx = player.speed;
+        player.facingRight = true;
+        player.frame += 0.15;
+      } else {
+        player.vx = 0;
+        player.frame = 0;
+      }
+
+      // Salto
+      if ((keys['ArrowUp'] || keys['KeyW'] || keys['Space'] || keys['jumpActive']) && player.isGrounded) {
+        player.vy = player.jumpForce;
+        player.isGrounded = false;
+        keys['Space'] = false;
+        keys['jumpActive'] = false;
+      }
+
+      // Gravità e Fisica
+      player.vy += 0.5;
+      player.x += player.vx;
+      player.y += player.vy;
+
+      if (player.y + player.height >= groundY) {
+        player.y = groundY - player.height;
+        player.vy = 0;
+        player.isGrounded = true;
+      }
+
+      if (player.x < 50) {
+        player.x = 50;
+      }
+
+      cameraX = player.x - 200;
+      if (cameraX < 0) cameraX = 0;
+
+      // Collisioni con lettere
+      gameLetters.forEach(letter => {
+        if (!letter.collected) {
+          const distX = Math.abs(letter.x - (player.x + player.width / 2));
+          const distY = Math.abs(letter.y - (player.y + player.height / 2));
+          
+          if (distX < (player.width / 2 + letter.radius) && distY < (player.height / 2 + letter.radius)) {
+            letter.collected = true;
+            state.collectedCount++;
+            state.collectedLetters.push(letter.char);
+            document.getElementById('game-collected-count').innerText = `${state.collectedCount} / 20`;
+            document.getElementById('game-last-char').innerText = letter.char;
+            
+            playMorse(letter.char);
+
+            showToast(translate("toast_game_collected_letter", { char: letter.char }), "info");
+
+            if (state.collectedCount === 20) {
+              showToast(translate("toast_game_collected_20"), "success");
+              document.getElementById('game-status-text').innerText = translate("game_status_radio");
+            }
+          }
+        }
+      });
+
+      // Collisione con Stazione Radio Finale
+      if (state.collectedCount >= 20) {
+        const radioDistX = Math.abs((radioStation.x + radioStation.width/2) - (player.x + player.width/2));
+        if (radioDistX < (player.width/2 + radioStation.width/2)) {
+          if (!radioStation.reached) {
+            radioStation.reached = true;
+            cancelAnimationFrame(animationId);
+            showToast(translate("toast_radio_reached"), "success");
+            setTimeout(() => {
+              transitionToNotebook();
+            }, 1000);
+          }
+        }
+      }
+    }
+
+    function drawGame() {
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      for (let i = 0; i < 20; i++) {
+        let starX = (i * 123) % canvas.width;
+        let starY = (i * 47) % 150;
+        ctx.fillRect(starX, starY, 2, 2);
+      }
+
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(0, groundY);
+      for (let i = 0; i <= canvas.width; i += 50) {
+        let hillX = i + cameraX * 0.2;
+        let hillY = groundY - 40 + Math.sin(hillX * 0.005) * 20;
+        ctx.lineTo(i, hillY);
+      }
+      ctx.lineTo(canvas.width, groundY);
+      ctx.fill();
+
+      backgroundElements.forEach(elem => {
+        let drawX = elem.x - cameraX;
+        if (drawX > -100 && drawX < canvas.width + 100) {
+          if (elem.type === 'telegraph-pole') {
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(drawX, elem.y);
+            ctx.lineTo(drawX, elem.y - 100);
+            ctx.stroke();
+
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(drawX - 20, elem.y - 90);
+            ctx.lineTo(drawX + 20, elem.y - 90);
+            ctx.stroke();
+
+            ctx.fillStyle = '#67e8f9';
+            ctx.fillRect(drawX - 18, elem.y - 96, 4, 6);
+            ctx.fillRect(drawX + 14, elem.y - 96, 4, 6);
+
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(drawX, elem.y - 90);
+            ctx.quadraticCurveTo(drawX + 90, elem.y - 70, drawX + 180, elem.y - 90);
+            ctx.stroke();
+          } else {
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(drawX, elem.y);
+            ctx.lineTo(drawX, elem.y - 120);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            let timePulse = (Date.now() * 0.005) % 3;
+            ctx.beginPath();
+            ctx.arc(drawX, elem.y - 120, timePulse * 15, Math.PI, 0);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(drawX, elem.y - 120, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      });
+
+      ctx.fillStyle = '#064e3b';
+      ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(0, groundY, canvas.width, 6);
+
+      let radioDrawX = radioStation.x - cameraX;
+      if (radioDrawX > -100 && radioDrawX < canvas.width + 100) {
+        ctx.fillStyle = '#1e293b';
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 3;
+        ctx.fillRect(radioDrawX, radioStation.y, radioStation.width, radioStation.height);
+        ctx.strokeRect(radioDrawX, radioStation.y, radioStation.width, radioStation.height);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(radioDrawX + 20, radioStation.y + 20, 20, 40);
+
+        ctx.fillStyle = (state.collectedCount >= 20) ? '#10b981' : '#3f3f46';
+        ctx.fillRect(radioDrawX + 5, radioStation.y - 18, 50, 14);
+        
+        ctx.fillStyle = (state.collectedCount >= 20) ? '#000000' : '#71717a';
+        ctx.font = 'bold 8px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText("RADIO", radioDrawX + 30, radioStation.y - 11);
+
+        if (state.collectedCount < 20) {
+          ctx.fillStyle = '#f59e0b';
+          ctx.font = '10px sans-serif';
+          const neededLetters = 20 - state.collectedCount;
+          const warningText = state.language === "it" ? `🔒 Raccogli altre ${neededLetters} lettere` : `🔒 Collect ${neededLetters} more letters`;
+          ctx.fillText(warningText, radioDrawX - 20, radioStation.y - 30);
+        } else {
+          ctx.fillStyle = '#10b981';
+          ctx.font = 'bold 10px "Press Start 2P"';
+          const enterText = state.language === "it" ? "ENTRA!" : "ENTER!";
+          ctx.fillText(enterText, radioDrawX + 5, radioStation.y - 30);
+        }
+      }
+
+      gameLetters.forEach(letter => {
+        if (!letter.collected) {
+          let drawX = letter.x - cameraX;
+          let bobY = letter.y + Math.sin(Date.now() * 0.005 + letter.bobOffset) * 5;
+
+          if (drawX > -50 && drawX < canvas.width + 50) {
+            let grad = ctx.createRadialGradient(drawX, bobY, 2, drawX, bobY, letter.radius);
+            grad.addColorStop(0, '#a7f3d0');
+            grad.addColorStop(0.8, '#10b981');
+            grad.addColorStop(1, 'transparent');
+            
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(drawX, bobY, letter.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#064e3b';
+            ctx.font = 'bold 14px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(letter.char, drawX, bobY + 1);
+          }
+        }
+      });
+
+      let playerDrawX = player.x - cameraX;
+      ctx.save();
+      
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = 'bold 10px "Share Tech Mono"';
+      ctx.textAlign = 'center';
+      ctx.fillText(state.callsign, playerDrawX + player.width / 2, player.y - 12);
+
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(playerDrawX + (player.facingRight ? 4 : 0), player.y, 20, 6);
+      ctx.fillRect(playerDrawX + 4, player.y - 4, 16, 6);
+
+      ctx.fillStyle = '#fecdd3';
+      ctx.fillRect(playerDrawX + 6, player.y + 6, 12, 10);
+      
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(playerDrawX + (player.facingRight ? 14 : 6), player.y + 8, 3, 3);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(playerDrawX + (player.facingRight ? 12 : 4), player.y + 12, 8, 3);
+
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(playerDrawX + 4, player.y + 16, 16, 14);
+
+      ctx.fillStyle = '#ef4444';
+      let armOffset = Math.sin(player.frame) * 4;
+      if (player.vx === 0) armOffset = 0;
+      ctx.fillRect(playerDrawX + (player.facingRight ? 0 : 16), player.y + 16 + armOffset, 4, 8);
+
+      ctx.fillStyle = '#78350f';
+      let legOffset1 = Math.sin(player.frame) * 5;
+      let legOffset2 = -Math.sin(player.frame) * 5;
+      if (player.vx === 0) { legOffset1 = 0; legOffset2 = 0; }
+      ctx.fillRect(playerDrawX + 2, player.y + 30 + (legOffset1 > 0 ? legOffset1 : 0), 8, 8);
+      ctx.fillRect(playerDrawX + 12, player.y + 30 + (legOffset2 > 0 ? legOffset2 : 0), 8, 8);
+
+      ctx.restore();
+    }
+
+    // --- SETUP CONTROLLI TASTIERA ---
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) > -1) {
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+    });
+
+    // Supporto Touch Mobile
+    const addTouchControl = (btnId, keyStateName) => {
+      const btn = document.getElementById(btnId);
+      if(btn) {
+        btn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          keys[keyStateName] = true;
+        });
+        btn.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          keys[keyStateName] = false;
+        });
+      }
+    };
+    addTouchControl('touch-left', 'leftActive');
+    addTouchControl('touch-right', 'rightActive');
+    addTouchControl('touch-jump', 'jumpActive');
+
+    // --- GESTIONE SCHERMATE E TRANSIZIONI ---
+    
+    function showScreen(screenId) {
+      document.getElementById('screen-intro').classList.add('hidden');
+      document.getElementById('screen-setup').classList.add('hidden');
+      document.getElementById('screen-game').classList.add('hidden');
+      document.getElementById('screen-notebook').classList.add('hidden');
+      document.getElementById('screen-results').classList.add('hidden');
+      
+      document.getElementById(screenId).classList.remove('hidden');
+
+      const headerStats = document.getElementById('header-stats');
+      if (screenId === 'screen-setup' || screenId === 'screen-intro') {
+        headerStats.classList.add('hidden');
+      } else {
+        headerStats.classList.remove('hidden');
+        document.getElementById('stat-callsign').innerText = state.callsign;
+        document.getElementById('stat-lesson').innerText = state.kochLesson;
+        document.getElementById('stat-level').innerText = state.difficultyLevel;
+      }
+    }
+
+    // Passaggio dalla presentazione alla schermata di configurazione parametri (La musica continua a suonare!)
+    document.getElementById('btn-start-presentation').addEventListener('click', () => {
+      showScreen('screen-setup');
+    });
+
+    // Avvio del Gioco dal Setup (Qui la musica si spegne per non coprire i suoni delle lettere!)
+    document.getElementById('btn-start-game').addEventListener('click', () => {
+      // Ferma la musica chiptune di sottofondo per la fase di raccolta lettere
+      stopIntroMusic();
+
+      const callsignInput = document.getElementById('setup-callsign').value.trim().toUpperCase();
+      if (!callsignInput) {
+        const errorMsg = state.language === "it" ? "Inserisci un nominativo valido!" : "Enter a valid callsign!";
+        showToast(errorMsg, "error");
+        return;
+      }
+      
+      state.callsign = callsignInput;
+      state.difficultyLevel = document.getElementById('setup-level').value;
+      state.wpm = parseInt(document.getElementById('setup-wpm').value);
+      state.effWpm = parseInt(document.getElementById('setup-eff-wpm').value);
+      state.freq = parseInt(document.getElementById('setup-freq').value);
+      
+      showScreen('screen-game');
+      initGameWorld();
+      gameLoop();
+      showToast(translate("toast_game_welcome"), "success");
+    });
+
+    // Funzione Prova Audio (Tasto K) nel menu
+    document.getElementById('btn-test-audio').addEventListener('click', () => {
+      // Ferma eventuale musica intro per non sovrapporsi
+      stopIntroMusic();
+
+      state.wpm = parseInt(document.getElementById('setup-wpm').value);
+      state.effWpm = parseInt(document.getElementById('setup-eff-wpm').value);
+      state.freq = parseInt(document.getElementById('setup-freq').value);
+      
+      const btn = document.getElementById('btn-test-audio');
+      btn.disabled = true;
+      btn.innerText = translate("setup_test_active");
+      
+      playMorse('K', () => {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-volume-high"></i> ${translate("setup-test-btn")}`;
+      });
+    });
+
+    // Slider Event Listeners per UI
+    const sliders = [
+      { id: 'setup-wpm', displayId: 'display-wpm', suffix: '' },
+      { id: 'setup-eff-wpm', displayId: 'display-eff-wpm', suffix: '' },
+      { id: 'setup-freq', displayId: 'display-freq', suffix: ' Hz' }
+    ];
+    sliders.forEach(slider => {
+      const input = document.getElementById(slider.id);
+      const output = document.getElementById(slider.displayId);
+      input.addEventListener('input', () => {
+        output.innerText = input.value + slider.suffix;
+        if (slider.id === 'setup-wpm') {
+          const effInput = document.getElementById('setup-eff-wpm');
+          if (parseInt(effInput.value) > parseInt(input.value)) {
+            effInput.value = input.value;
+            document.getElementById('display-eff-wpm').innerText = input.value;
+          }
+        }
+        if (slider.id === 'setup-eff-wpm') {
+          const wpmInput = document.getElementById('setup-wpm');
+          if (parseInt(input.value) > parseInt(wpmInput.value)) {
+            input.value = wpmInput.value;
+            output.innerText = wpmInput.value;
+          }
+        }
+      });
+    });
+
+    // --- TRANSITION TO FASE 2: NOTEBOOK ---
+    function transitionToNotebook() {
+      showScreen('screen-notebook');
+      generateNotebookGroups();
+      initNotebookEngine();
+    }
+
+    // --- GAME ENGINE: FASE 2 (NOTEBOOK COPY GAME) ---
+    function generateNotebookGroups() {
+      state.transmittedGroups = [];
+      state.userAnswers = Array(30).fill("");
+      
+      for (let g = 0; g < 30; g++) {
+        let group = "";
+        for (let l = 0; l < 5; l++) {
+          const randomChar = state.currentChars[Math.floor(Math.random() * state.currentChars.length)];
+          group += randomChar;
+        }
+        state.transmittedGroups.push(group);
+      }
+
+      const container = document.getElementById('cinquine-container');
+      container.innerHTML = "";
+
+      for (let i = 0; i < 30; i++) {
+        const item = document.createElement('div');
+        item.className = `bg-stone-900 border border-stone-800 p-2 rounded flex flex-col items-center gap-1 relative`;
+        item.id = `group-box-${i}`;
+        
+        item.innerHTML = `
+          <span class="text-[10px] text-stone-500 font-mono font-bold absolute top-1 left-2">#${String(i+1).padStart(2, '0')}</span>
+          <input type="text" id="input-group-${i}" maxlength="5" disabled
+                 class="w-full text-center bg-stone-950 text-amber-400 border border-stone-800 focus:border-amber-500 focus:outline-none rounded py-1 px-2 uppercase font-mono tracking-widest text-lg font-bold disabled:opacity-40"
+                 placeholder="?????">
+        `;
+        container.appendChild(item);
+
+        const inputEl = document.getElementById(`input-group-${i}`);
+        inputEl.addEventListener('input', (e) => {
+          let val = e.target.value.toUpperCase();
+          val = val.replace(/[^A-Z0-9.,\/?]/g, '');
+          e.target.value = val;
+          state.userAnswers[i] = val;
+
+          if (val.length === 5) {
+            document.getElementById(`group-box-${i}`).classList.remove('border-stone-800');
+            document.getElementById(`group-box-${i}`).classList.add('border-green-800/60');
+          } else {
+            document.getElementById(`group-box-${i}`).classList.add('border-stone-800');
+            document.getElementById(`group-box-${i}`).classList.remove('border-green-800/60');
+          }
+
+          checkCompletionStatus();
+        });
+      }
+    }
+
+    function checkCompletionStatus() {
+      const allFilled = state.userAnswers.every(ans => ans.length === 5);
+      const submitBtn = document.getElementById('btn-submit-notebook');
+      if (allFilled) {
+        submitBtn.removeAttribute('disabled');
+        submitBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+      } else {
+        submitBtn.setAttribute('disabled', 'true');
+      }
+    }
+
+    function initNotebookEngine() {
+      state.currentListeningIndex = -1;
+      state.playbackActive = false;
+      
+      document.getElementById('notebook-progress').innerText = "0 / 30 Gruppi";
+      
+      const playBtn = document.getElementById('btn-start-listening');
+      playBtn.removeAttribute('disabled');
+      playBtn.innerHTML = `<i class="fa-solid fa-play"></i> ${translate("note_play_btn")}`;
+
+      const replayBtn = document.getElementById('btn-play-again');
+      replayBtn.setAttribute('disabled', 'true');
+
+      const submitBtn = document.getElementById('btn-submit-notebook');
+      submitBtn.setAttribute('disabled', 'true');
+
+      updateNotebookInstructions();
+    }
+
+    document.getElementById('btn-start-listening').addEventListener('click', () => {
+      if (state.playbackActive) return;
+      playNextGroup();
+    });
+
+    function playNextGroup() {
+      if (state.currentListeningIndex >= 29) {
+        showToast(translate("toast_note_filled"), "info");
+        return;
+      }
+
+      state.playbackActive = true;
+      state.currentListeningIndex++;
+      
+      const currentIdx = state.currentListeningIndex;
+      const currentGroupText = state.transmittedGroups[currentIdx];
+
+      const groupsWord = state.language === "it" ? "Gruppi" : "Groups";
+      document.getElementById('notebook-progress').innerText = `${currentIdx + 1} / 30 ${groupsWord}`;
+      
+      updateNotebookInstructions();
+      
+      for (let i = 0; i < 30; i++) {
+        const box = document.getElementById(`group-box-${i}`);
+        if (i === currentIdx) {
+          box.classList.add('ring-2', 'ring-amber-500', 'bg-stone-900');
+          const input = document.getElementById(`input-group-${i}`);
+          input.removeAttribute('disabled');
+          input.focus();
+        } else {
+          box.classList.remove('ring-2', 'ring-amber-500');
+        }
+      }
+
+      document.getElementById('btn-start-listening').setAttribute('disabled', 'true');
+      document.getElementById('btn-play-again').setAttribute('disabled', 'true');
+
+      playMorseWord(currentGroupText, () => {
+        state.playbackActive = false;
+        updateNotebookInstructions();
+        document.getElementById('btn-play-again').removeAttribute('disabled');
+        
+        const playBtn = document.getElementById('btn-start-listening');
+        if (currentIdx < 29) {
+          playBtn.innerHTML = `<i class="fa-solid fa-forward"></i> ${translate("note_btn_next")}`;
+        } else {
+          playBtn.innerHTML = `<i class="fa-solid fa-check"></i> ${translate("note_btn_done")}`;
+        }
+      });
+    }
+
+    document.getElementById('btn-play-again').addEventListener('click', () => {
+      if (state.playbackActive || state.currentListeningIndex === -1) return;
+
+      state.playbackActive = true;
+      const currentIdx = state.currentListeningIndex;
+      const currentGroupText = state.transmittedGroups[currentIdx];
+
+      document.getElementById('notebook-instruction').innerText = translate("note_instruction_replay", { num: currentIdx + 1 });
+      document.getElementById('btn-start-listening').setAttribute('disabled', 'true');
+      document.getElementById('btn-play-again').setAttribute('disabled', 'true');
+
+      document.getElementById(`input-group-${currentIdx}`).focus();
+
+      playMorseWord(currentGroupText, () => {
+        state.playbackActive = false;
+        updateNotebookInstructions();
+        document.getElementById('btn-play-again').removeAttribute('disabled');
+        
+        if (currentIdx < 29) {
+          document.getElementById('btn-start-listening').innerHTML = `<i class="fa-solid fa-forward"></i> ${translate("note_btn_next")}`;
+        }
+      });
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (document.getElementById('screen-notebook').classList.contains('hidden')) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        
+        if (!state.playbackActive && state.currentListeningIndex < 29) {
+          const currentInput = document.getElementById(`input-group-${state.currentListeningIndex}`);
+          
+          if (state.currentListeningIndex === -1) {
+            playNextGroup();
+          } else if (currentInput && currentInput.value.length < 5) {
+            showToast(translate("toast_note_incomplete"), "error");
+          } else {
+            playNextGroup();
+          }
+        }
+      }
+    });
+
+    // --- CALCOLO RISULTATI ---
+    document.getElementById('btn-submit-notebook').addEventListener('click', () => {
+      if (state.userAnswers.some(ans => ans.length < 5)) {
+        showToast(translate("toast_note_submit_err"), "error");
+        return;
+      }
+
+      showScreen('screen-results');
+      evaluateResults();
+    });
+
+    function evaluateResults() {
+      let totalChars = 150;
+      let correctCharsCount = 0;
+      let totalErrorsCount = 0;
+
+      const comparisonList = document.getElementById('result-comparison-list');
+      comparisonList.innerHTML = "";
+
+      document.getElementById('tutor-feedback-box').classList.add('hidden');
+      document.getElementById('tutor-feedback-text').innerText = translate("res-tutor-analyzing");
+
+      for (let i = 0; i < 30; i++) {
+        const transmitted = state.transmittedGroups[i];
+        const userTyped = state.userAnswers[i] || "?????";
+
+        const card = document.createElement('div');
+        card.className = "bg-gray-900 border border-gray-800 p-3 rounded text-sm";
+        
+        let comparisonHTML = "";
+        for (let l = 0; l < 5; l++) {
+          const tLetter = transmitted[l];
+          const uLetter = userTyped[l] || '?';
+
+          if (tLetter === uLetter) {
+            correctCharsCount++;
+            comparisonHTML += `<span class="text-green-500 font-mono font-bold text-lg mx-0.5">${uLetter}</span>`;
+          } else {
+            totalErrorsCount++;
+            comparisonHTML += `<span class="text-red-500 font-mono font-bold text-lg mx-0.5 line-through" title="Transmitted: ${tLetter}">${uLetter === '?' ? '_' : uLetter}</span><span class="text-green-400 font-mono text-xs" title="Correct">(${tLetter})</span>`;
+          }
+        }
+
+        const groupWord = state.language === "it" ? "GRUPPO" : "GROUP";
+        card.innerHTML = `
+          <div class="flex justify-between items-center text-[11px] text-gray-500 mb-1 border-b border-gray-800 pb-1">
+            <span class="font-bold">${groupWord} #${i+1}</span>
+            <span class="font-mono text-gray-400">${transmitted}</span>
+          </div>
+          <div class="flex justify-center items-center py-1">
+            ${comparisonHTML}
+          </div>
+        `;
+        comparisonList.appendChild(card);
+      }
+
+      const accuracy = ((correctCharsCount / totalChars) * 100).toFixed(1);
+      document.getElementById('res-stat-total').innerText = totalChars;
+      document.getElementById('res-stat-correct').innerText = correctCharsCount;
+      document.getElementById('res-stat-errors').innerText = totalErrorsCount;
+      document.getElementById('res-stat-accuracy').innerText = `${accuracy}%`;
+
+      const selectedDiff = DIFFICULTIES[state.difficultyLevel];
+      const pass = totalErrorsCount <= selectedDiff.maxErrors;
+
+      const badge = document.getElementById('result-status-badge');
+      const headline = document.getElementById('result-headline');
+      const subheader = document.getElementById('result-subheader');
+      const retryBtn = document.getElementById('btn-result-retry');
+
+      badge.className = `inline-block px-4 py-2 rounded-full retro-font text-xs uppercase mb-3 ${pass ? 'bg-green-500 text-gray-950' : 'bg-red-500 text-white'}`;
+      badge.innerText = pass ? translate("res_badge_pass") : translate("res_badge_fail");
+
+      if (pass) {
+        playSuccessSound();
+        retryBtn.innerHTML = `<i class="fa-solid fa-chevron-right"></i> ${translate("res-retry-next")}`;
+        
+        if (totalErrorsCount === 0) {
+          headline.innerText = translate("headline_perfect");
+          subheader.innerText = translate("sub_perfect");
+        } else if (totalErrorsCount <= 2) {
+          headline.innerText = translate("headline_great");
+          subheader.innerText = translate("sub_great", { errors: totalErrorsCount });
+        } else if (totalErrorsCount <= 3) {
+          headline.innerText = translate("headline_good");
+          subheader.innerText = translate("sub_good", { errors: totalErrorsCount });
+        } else {
+          headline.innerText = translate("headline_ok");
+          subheader.innerText = translate("sub_ok", { errors: totalErrorsCount });
+        }
+      } else {
+        playFailureSound();
+        retryBtn.innerHTML = `<i class="fa-solid fa-repeat"></i> ${translate("res-retry-btn")}`;
+        
+        headline.innerText = translate("headline_fail");
+        subheader.innerText = translate("sub_fail", { errors: totalErrorsCount, max: selectedDiff.maxErrors });
+      }
+
+      if (pass && state.kochLesson < KOCH_SEQUENCE.length - 1) {
+        retryBtn.onclick = () => {
+          state.kochLesson++;
+          state.currentChars = KOCH_SEQUENCE.slice(0, state.kochLesson + 1);
+          document.getElementById('setup-lesson').value = state.kochLesson;
+          document.getElementById('setup-lesson-chars').innerText = state.currentChars.join(' ');
+          
+          showScreen('screen-game');
+          initGameWorld();
+          gameLoop();
+        };
+      } else {
+        retryBtn.onclick = () => {
+          showScreen('screen-game');
+          initGameWorld();
+          gameLoop();
+        };
+      }
+    }
+
+    document.getElementById('btn-result-menu').addEventListener('click', () => {
+      showScreen('screen-setup');
+    });
+
+    // Avvio dell'app
+    window.onload = () => {
+      buildLessonSelect();
+      updateLanguageUI();
+      showScreen('screen-intro');
+      
+      // Avvia la musica arcade automatica ad ogni prima interazione possibile dell'utente
+      document.body.addEventListener('click', tryStartIntroMusic, { once: true });
+      document.body.addEventListener('keydown', tryStartIntroMusic, { once: true });
+      document.body.addEventListener('touchstart', tryStartIntroMusic, { once: true });
+      document.body.addEventListener('mousedown', tryStartIntroMusic, { once: true });
+
+      // Gestore per il pulsante muto/attivo della musica nella schermata di presentazione
+      const toggleMusicBtn = document.getElementById('btn-toggle-music');
+      if (toggleMusicBtn) {
+        toggleMusicBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          isMusicMuted = !isMusicMuted;
+          if (isMusicMuted) {
+            toggleMusicBtn.innerHTML = `<i class="fa-solid fa-volume-xmark text-sm"></i> <span>${translate("intro_music_off")}</span>`;
+            toggleMusicBtn.classList.remove('text-emerald-400', 'border-emerald-900');
+            toggleMusicBtn.classList.add('text-gray-500', 'border-gray-800');
+            stopIntroMusic();
+          } else {
+            toggleMusicBtn.innerHTML = `<i class="fa-solid fa-volume-high text-sm"></i> <span>${translate("intro_music_on")}</span>`;
+            toggleMusicBtn.classList.add('text-emerald-400', 'border-emerald-900');
+            toggleMusicBtn.classList.remove('text-gray-500', 'border-gray-800');
+            startIntroMusic();
+          }
+        });
+      }
+    };
+  </script>
+</body>
+</html>
