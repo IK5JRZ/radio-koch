@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+  <style>
+  /* Pulsante Mobile per il CW */
+  #mobile-cw-btn {
+    display: none; /* Nascosto su PC */
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 120px;
+    height: 120px;
+    background: #10b981;
+    border-radius: 50%;
+    border: 5px solid #064e3b;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    z-index: 9999;
+    touch-action: manipulation;
+  }
+  @media (pointer: coarse) {
+    #mobile-cw-btn { display: flex; align-items: center; justify-content: center; }
+  }
+</style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Radio Koch Adventure - Morse Trainer</title>
@@ -2245,5 +2267,22 @@
       }
     };
   </script>
+  <!-- Aggiungi questo bottone nel tuo <body>, subito dopo il canvas -->
+<button id="mobile-cw-btn">TX</button>
+
+<!-- Aggiungi questo JavaScript per collegare il tasto -->
+<script>
+  const mobileBtn = document.getElementById('mobile-cw-btn');
+  
+  // Funzione che simula la pressione della barra spaziatrice
+  const triggerSpace = (e) => {
+    e.preventDefault();
+    const event = new KeyboardEvent('keydown', { code: 'Space', key: ' ' });
+    document.dispatchEvent(event);
+  };
+  
+  mobileBtn.addEventListener('touchstart', triggerSpace);
+  mobileBtn.addEventListener('mousedown', triggerSpace);
+</script>
 </body>
 </html>
