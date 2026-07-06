@@ -69,6 +69,16 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #10b981;
     }
+
+    /* Mostra elementi SOLO su schermi Touch (coarse pointer) */
+    .touch-only {
+      display: none !important;
+    }
+    @media (pointer: coarse) {
+      .touch-only {
+        display: flex !important;
+      }
+    }
   </style>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col justify-between overflow-x-hidden crt relative selection:bg-emerald-500 selection:text-black">
@@ -103,7 +113,7 @@
   </header>
 
   <!-- Main Work Area -->
-  <main class="flex-grow flex flex-col items-center justify-center p-4 max-w-6xl w-full mx-auto text-gray-100">
+  <main class="flex-grow flex flex-col items-center justify-center p-4 max-w-6xl w-full mx-auto">
     
     <!-- SCHERMATA DI PRESENTAZIONE INIZIALE -->
     <div id="screen-intro" class="w-full max-w-xl bg-gray-900 border-2 border-emerald-500/50 rounded-lg p-8 shadow-[0_0_25px_rgba(16,185,129,0.2)] text-center flex flex-col items-center justify-center space-y-8">
@@ -285,12 +295,12 @@
         </div>
       </div>
 
-      <!-- Area Canvas del Gioco -->
-      <div class="relative w-full overflow-hidden bg-slate-950 border border-gray-800 rounded mb-4" style="height: 320px;">
+      <!-- Area Canvas del Gioco (Uso aspect-ratio responsive per calcolare in automatico le dimensioni corrette su mobile) -->
+      <div class="relative w-full aspect-[2.5/1] bg-slate-950 border border-gray-800 rounded mb-4 overflow-hidden">
         <canvas id="game-canvas" width="800" height="320" class="w-full h-full block"></canvas>
         
-        <!-- Controlli Mobile/Touch Sovrapposti -->
-        <div class="absolute bottom-3 left-3 right-3 flex justify-between md:hidden pointer-events-none">
+        <!-- Controlli Mobile/Touch Sovrapposti (Sempre visibili su schermi touch grazie alla classe touch-only) -->
+        <div class="absolute bottom-3 left-3 right-3 flex justify-between pointer-events-none touch-only">
           <div class="flex gap-2 pointer-events-auto">
             <button id="touch-left" class="w-12 h-12 bg-gray-850/85 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-600 active:scale-95 transition-all">
               <i class="fa-solid fa-arrow-left text-lg"></i>
@@ -300,7 +310,7 @@
             </button>
           </div>
           <div class="pointer-events-auto">
-            <button id="touch-jump" class="w-16 h-12 bg-gray-850/85 active:bg-emerald-500 text-white rounded-xl flex items-center justify-center border border-gray-600 active:scale-95 transition-all uppercase font-bold text-xs">
+            <button id="touch-jump" class="w-16 h-12 bg-gray-850/85 active:bg-emerald-500 text-white rounded-xl flex items-center justify-center border border-gray-600 active:scale-95 transition-all uppercase font-bold text-xs" id="mobile-jump-label">
               Salta
             </button>
           </div>
@@ -352,8 +362,8 @@
         </div>
       </div>
 
-      <!-- Pannello tasti ausiliari specifici per cellulare / iPad -->
-      <div class="flex lg:hidden flex-wrap gap-2 mb-4 p-3 bg-stone-950 rounded border border-amber-900/30 justify-between items-center">
+      <!-- Pannello tasti ausiliari specifici per cellulare / iPad (Sempre visibile su touch grazie alla classe touch-only) -->
+      <div class="flex flex-wrap gap-2 mb-4 p-3 bg-stone-950 rounded border border-amber-900/30 justify-between items-center touch-only">
         <span class="text-amber-500 font-mono text-xs font-bold uppercase"><i class="fa-solid fa-mobile-screen mr-1"></i> Pannello Mobile:</span>
         <div class="flex gap-2">
           <button id="mobile-focus-keyboard" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold py-2 px-3 rounded text-xs uppercase transition flex items-center gap-1.5">
@@ -1463,13 +1473,13 @@
       }
     });
 
+    // --- STREAMING_CHUNK: Logica di aggiornamento e disegno del canvas di gioco ---
     // --- GAME ENGINE: FASE 1 (PLATFORMER COLLECTION) ---
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
     
     let animationId = null;
     let keys = {};
-    let viewScale = 1.0; // Fattore di scala adattivo per mobile/tablet
     
     // Oggetti di gioco
     let player = {
@@ -1492,16 +1502,8 @@
     let backgroundElements = [];
     let radioStation = { x: 3000, y: groundY - 60, width: 60, height: 60, reached: false };
 
-    // Gestione della reattività del canvas e del ridisegno proporzionale
-    function updateScaleFactor() {
-      // Se lo schermo è mobile/piccolo (<768px), aumentiamo il rendering del 40% (1.4x)
-      viewScale = window.innerWidth < 768 ? 1.4 : 1.0;
-    }
-
     // Genera mondo procedurale
     function initGameWorld() {
-      updateScaleFactor();
-      
       player.x = 100;
       player.y = groundY - player.height;
       player.vx = 0;
@@ -1584,8 +1586,8 @@
         player.x = 50;
       }
 
-      // Adattiamo la camera basandoci sul fattore di scala corrente
-      cameraX = player.x - (200 / viewScale);
+      // Adattiamo la telecamera
+      cameraX = player.x - 200;
       if (cameraX < 0) cameraX = 0;
 
       // Collisioni con lettere
@@ -1630,39 +1632,34 @@
     }
 
     function drawGame() {
-      ctx.save();
-      
-      // Se siamo su mobile, applichiamo un ingrandimento del contesto di disegno del canvas
-      if (viewScale !== 1.0) {
-        ctx.scale(viewScale, viewScale);
-        // Spostiamo la visualizzazione per mantenere il focus bilanciato sul personaggio
-        ctx.translate(-cameraX * (viewScale - 1) * 0.1, 0);
-      }
-
+      // Pulisci il canvas
       ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, canvas.width / viewScale, canvas.height / viewScale);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // Stelle di sfondo
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       for (let i = 0; i < 20; i++) {
-        let starX = (i * 123) % (canvas.width / viewScale);
+        let starX = (i * 123) % canvas.width;
         let starY = (i * 47) % 150;
         ctx.fillRect(starX, starY, 2, 2);
       }
 
+      // Colline distanti
       ctx.fillStyle = '#1e293b';
       ctx.beginPath();
       ctx.moveTo(0, groundY);
-      for (let i = 0; i <= canvas.width / viewScale; i += 50) {
+      for (let i = 0; i <= canvas.width; i += 50) {
         let hillX = i + cameraX * 0.2;
         let hillY = groundY - 40 + Math.sin(hillX * 0.005) * 20;
         ctx.lineTo(i, hillY);
       }
-      ctx.lineTo(canvas.width / viewScale, groundY);
+      ctx.lineTo(canvas.width, groundY);
       ctx.fill();
 
+      // Pali del telegrafo e Antenne di sfondo
       backgroundElements.forEach(elem => {
         let drawX = elem.x - cameraX;
-        if (drawX > -100 && drawX < (canvas.width / viewScale) + 100) {
+        if (drawX > -100 && drawX < canvas.width + 100) {
           if (elem.type === 'telegraph-pole') {
             ctx.strokeStyle = '#78350f';
             ctx.lineWidth = 6;
@@ -1710,13 +1707,15 @@
         }
       });
 
+      // Terreno verde e linea di confine
       ctx.fillStyle = '#064e3b';
-      ctx.fillRect(0, groundY, canvas.width / viewScale, (canvas.height / viewScale) - groundY);
+      ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
       ctx.fillStyle = '#10b981';
-      ctx.fillRect(0, groundY, canvas.width / viewScale, 6);
+      ctx.fillRect(0, groundY, canvas.width, 6);
 
+      // Stazione radio a fine livello
       let radioDrawX = radioStation.x - cameraX;
-      if (radioDrawX > -100 && radioDrawX < (canvas.width / viewScale) + 100) {
+      if (radioDrawX > -100 && radioDrawX < canvas.width + 100) {
         ctx.fillStyle = '#1e293b';
         ctx.strokeStyle = '#10b981';
         ctx.lineWidth = 3;
@@ -1749,12 +1748,13 @@
         }
       }
 
+      // Lettere da raccogliere (Uso un font tondo altamente leggibile al posto del pixel font)
       gameLetters.forEach(letter => {
         if (!letter.collected) {
           let drawX = letter.x - cameraX;
           let bobY = letter.y + Math.sin(Date.now() * 0.005 + letter.bobOffset) * 5;
 
-          if (drawX > -50 && drawX < (canvas.width / viewScale) + 50) {
+          if (drawX > -50 && drawX < canvas.width + 50) {
             let grad = ctx.createRadialGradient(drawX, bobY, 2, drawX, bobY, letter.radius);
             grad.addColorStop(0, '#a7f3d0');
             grad.addColorStop(0.8, '#10b981');
@@ -1765,8 +1765,9 @@
             ctx.arc(drawX, bobY, letter.radius, 0, Math.PI * 2);
             ctx.fill();
 
+            // Usiamo il font telegrafico tondo 'Share Tech Mono' per distinguere perfettamente O da 0
             ctx.fillStyle = '#064e3b';
-            ctx.font = 'bold 14px "Press Start 2P"';
+            ctx.font = 'bold 18px "Share Tech Mono", monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(letter.char, drawX, bobY + 1);
@@ -1774,34 +1775,42 @@
         }
       });
 
+      // Disegno del personaggio
       let playerDrawX = player.x - cameraX;
       ctx.save();
       
       ctx.fillStyle = '#f59e0b';
       ctx.font = 'bold 10px "Share Tech Mono"';
+      ctx.textBaseline = 'bottom';
       ctx.textAlign = 'center';
-      ctx.fillText(state.callsign, playerDrawX + player.width / 2, player.y - 12);
+      ctx.fillText(state.callsign, playerDrawX + player.width / 2, player.y - 4);
 
+      // Cappello Rosso
       ctx.fillStyle = '#ef4444';
       ctx.fillRect(playerDrawX + (player.facingRight ? 4 : 0), player.y, 20, 6);
       ctx.fillRect(playerDrawX + 4, player.y - 4, 16, 6);
 
+      // Faccia
       ctx.fillStyle = '#fecdd3';
       ctx.fillRect(playerDrawX + 6, player.y + 6, 12, 10);
       
+      // Occhio e Baffi
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(playerDrawX + (player.facingRight ? 14 : 6), player.y + 8, 3, 3);
       ctx.fillStyle = '#78350f';
       ctx.fillRect(playerDrawX + (player.facingRight ? 12 : 4), player.y + 12, 8, 3);
 
+      // Salopette Blu
       ctx.fillStyle = '#3b82f6';
       ctx.fillRect(playerDrawX + 4, player.y + 16, 16, 14);
 
+      // Braccia Rosse
       ctx.fillStyle = '#ef4444';
       let armOffset = Math.sin(player.frame) * 4;
       if (player.vx === 0) armOffset = 0;
       ctx.fillRect(playerDrawX + (player.facingRight ? 0 : 16), player.y + 16 + armOffset, 4, 8);
 
+      // Scarpe Marroni
       ctx.fillStyle = '#78350f';
       let legOffset1 = Math.sin(player.frame) * 5;
       let legOffset2 = -Math.sin(player.frame) * 5;
@@ -1810,7 +1819,6 @@
       ctx.fillRect(playerDrawX + 12, player.y + 30 + (legOffset2 > 0 ? legOffset2 : 0), 8, 8);
 
       ctx.restore();
-      ctx.restore(); // Ripristina lo stato iniziale dello scale di disegno
     }
 
     // --- SETUP CONTROLLI TASTIERA ---
