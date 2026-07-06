@@ -726,7 +726,6 @@
       }
     }, 1000);
 
-    // --- STREAMING_CHUNK: Setting up audio synth & chiptune background engine... -->
     // --- CHIPTUNE ARCADE MUSIC ENGINE ---
     let introMusicInterval = null;
     let isMusicMuted = false;
@@ -748,50 +747,58 @@
     ];
 
     function playChiptuneTone(freq, type, duration, volume) {
-      if (!audioCtx || isMusicMuted) return;
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+      try {
+        if (!audioCtx || isMusicMuted) return;
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+        
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("Chiptune audio error caught safely:", e);
       }
-      
-      const osc = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      
-      gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-      
-      osc.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      
-      osc.start();
-      osc.stop(audioCtx.currentTime + duration);
     }
 
     function startIntroMusic() {
-      initAudio();
-      if (introMusicInterval) return;
-      isMusicMuted = false;
-      
-      const toggleMusicBtn = document.getElementById('btn-toggle-music');
-      if (toggleMusicBtn) {
-        toggleMusicBtn.innerHTML = `<i class="fa-solid fa-volume-high text-sm"></i> <span>${translate("intro_music_on")}</span>`;
-        toggleMusicBtn.classList.add('text-emerald-400', 'border-emerald-900');
-        toggleMusicBtn.classList.remove('text-gray-500', 'border-gray-800');
-      }
+      try {
+        initAudio();
+        if (introMusicInterval) return;
+        isMusicMuted = false;
+        
+        const toggleMusicBtn = document.getElementById('btn-toggle-music');
+        if (toggleMusicBtn) {
+          toggleMusicBtn.innerHTML = `<i class="fa-solid fa-volume-high text-sm"></i> <span>${translate("intro_music_on")}</span>`;
+          toggleMusicBtn.classList.add('text-emerald-400', 'border-emerald-900');
+          toggleMusicBtn.classList.remove('text-gray-500', 'border-gray-800');
+        }
 
-      introMusicInterval = setInterval(() => {
-        if (isMusicMuted) return;
-        
-        const mFreq = melodyFreqs[musicStep % melodyFreqs.length];
-        playChiptuneTone(mFreq, 'triangle', 0.18, 0.12);
-        
-        const bFreq = bassFreqs[musicStep % bassFreqs.length];
-        playChiptuneTone(bFreq, 'sawtooth', 0.12, 0.05);
-        
-        musicStep++;
-      }, 180);
+        introMusicInterval = setInterval(() => {
+          if (isMusicMuted) return;
+          
+          const mFreq = melodyFreqs[musicStep % melodyFreqs.length];
+          playChiptuneTone(mFreq, 'triangle', 0.18, 0.12);
+          
+          const bFreq = bassFreqs[musicStep % bassFreqs.length];
+          playChiptuneTone(bFreq, 'sawtooth', 0.12, 0.05);
+          
+          musicStep++;
+        }, 180);
+      } catch (e) {
+        console.warn("Could not start intro music:", e);
+      }
     }
 
     function stopIntroMusic() {
@@ -810,13 +817,19 @@
 
     function tryStartIntroMusic() {
       if (!musicStarted && !isMusicMuted) {
-        initAudio();
-        startIntroMusic();
-        musicStarted = true;
+        try {
+          initAudio();
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+          }
+          startIntroMusic();
+          musicStarted = true;
+        } catch (e) {
+          console.warn("Failed automatic audio initialization:", e);
+        }
       }
     }
 
-    // --- STREAMING_CHUNK: Integrating Gemini AI calls & error limits... -->
     async function callGemini(payload) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
       let delay = 1000;
@@ -895,105 +908,137 @@
     let audioCtx = null;
     let activeSource = null;
 
-    // --- STREAMING_CHUNK: Updating playMorse and playMorseWord audio context activations... */
-    function playMorse(char, onEnded = null) {
-      initAudio();
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
-      const code = MORSE_DICT[char.toUpperCase()];
-      if (!code) {
-        if (onEnded) onEnded();
-        return;
-      }
-
-      const dotDuration = 1.2 / state.wpm; 
-      const farnsworthFactor = (state.effWpm < state.wpm) ? (1.2 / state.effWpm) / (1.2 / state.wpm) : 1.0;
-      const charSpaceDuration = 3 * dotDuration * farnsworthFactor;
-
-      const osc = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      
-      osc.type = 'sine';
-      osc.frequency.value = state.freq;
-      
-      osc.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      
-      let now = audioCtx.currentTime;
-      gainNode.gain.setValueAtTime(0, now);
-
-      for (let i = 0; i < code.length; i++) {
-        const symbol = code[i];
-        const symDuration = (symbol === '.') ? dotDuration : (dotDuration * 3);
-        
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(0.3, now + 0.005);
-        
-        now += symDuration;
-        gainNode.gain.setValueAtTime(0.3, now);
-        gainNode.gain.linearRampToValueAtTime(0, now + 0.005);
-        
-        now += dotDuration;
-      }
-
-      osc.start();
-      osc.stop(now);
-      
-      osc.onended = () => {
-        setTimeout(() => {
-          if (onEnded) onEnded();
-        }, charSpaceDuration * 1000);
-      };
     }
 
-    function playMorseWord(word, onWordComplete = null) {
-      initAudio();
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-      let letters = word.toUpperCase().split('');
-      let currentIdx = 0;
-
-      function playNext() {
-        if (currentIdx < letters.length) {
-          const l = letters[currentIdx];
-          currentIdx++;
-          if (l === ' ') {
-            const spaceDur = (7.0 * (1.2 / state.effWpm)) * 1000;
-            setTimeout(playNext, spaceDur);
-          } else {
-            playMorse(l, playNext);
-          }
-        } else {
-          if (onWordComplete) onWordComplete();
+    // Assicura l'attivazione dell'AudioContext su PC in risposta ad azioni utente
+    function guaranteeAudioContext() {
+      try {
+        initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
         }
+      } catch (e) {
+        console.warn("Impossibile sbloccare l'AudioContext:", e);
       }
-      playNext();
     }
 
-    function playSuccessSound() {
-      initAudio();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const now = audioCtx.currentTime;
-      
-      const notes = [523.25, 659.25, 783.99, 1046.50];
-      notes.forEach((freq, idx) => {
+    function playMorse(char, onEnded = null) {
+      try {
+        initAudio();
+        if (!audioCtx) {
+          if (onEnded) onEnded();
+          return;
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+        const code = MORSE_DICT[char.toUpperCase()];
+        if (!code) {
+          if (onEnded) onEnded();
+          return;
+        }
+
+        const dotDuration = 1.2 / state.wpm; 
+        const farnsworthFactor = (state.effWpm < state.wpm) ? (1.2 / state.effWpm) / (1.2 / state.wpm) : 1.0;
+        const charSpaceDuration = 3 * dotDuration * farnsworthFactor;
+
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now + idx * 0.10);
-        gainNode.gain.setValueAtTime(0, now + idx * 0.10);
-        gainNode.gain.linearRampToValueAtTime(0.12, now + idx * 0.10 + 0.02);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.10 + 0.4);
+        
+        osc.type = 'sine';
+        osc.frequency.value = state.freq;
         
         osc.connect(gainNode);
         gainNode.connect(audioCtx.destination);
-        osc.start(now + idx * 0.10);
-        osc.stop(now + idx * 0.10 + 0.45);
-      });
+        
+        let now = audioCtx.currentTime;
+        gainNode.gain.setValueAtTime(0, now);
 
+        for (let i = 0; i < code.length; i++) {
+          const symbol = code[i];
+          const symDuration = (symbol === '.') ? dotDuration : (dotDuration * 3);
+          
+          gainNode.gain.setValueAtTime(0, now);
+          gainNode.gain.linearRampToValueAtTime(0.3, now + 0.005);
+          
+          now += symDuration;
+          gainNode.gain.setValueAtTime(0.3, now);
+          gainNode.gain.linearRampToValueAtTime(0, now + 0.005);
+          
+          now += dotDuration;
+        }
+
+        osc.start();
+        osc.stop(now);
+        
+        osc.onended = () => {
+          setTimeout(() => {
+            if (onEnded) onEnded();
+          }, charSpaceDuration * 1000);
+        };
+      } catch (e) {
+        console.error("Audio fault safely trapped in playMorse:", e);
+        if (onEnded) onEnded();
+      }
+    }
+
+    function playMorseWord(word, onWordComplete = null) {
       try {
+        initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+        let letters = word.toUpperCase().split('');
+        let currentIdx = 0;
+
+        function playNext() {
+          if (currentIdx < letters.length) {
+            const l = letters[currentIdx];
+            currentIdx++;
+            if (l === ' ') {
+              const spaceDur = (7.0 * (1.2 / state.effWpm)) * 1000;
+              setTimeout(playNext, spaceDur);
+            } else {
+              playMorse(l, playNext);
+            }
+          } else {
+            if (onWordComplete) onWordComplete();
+          }
+        }
+        playNext();
+      } catch (e) {
+        console.error("Audio error in playMorseWord:", e);
+        if (onWordComplete) onWordComplete();
+      }
+    }
+
+    function playSuccessSound() {
+      try {
+        initAudio();
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        const now = audioCtx.currentTime;
+        
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.10);
+          gainNode.gain.setValueAtTime(0, now + idx * 0.10);
+          gainNode.gain.linearRampToValueAtTime(0.12, now + idx * 0.10 + 0.02);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.10 + 0.4);
+          
+          osc.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          osc.start(now + idx * 0.10);
+          osc.stop(now + idx * 0.10 + 0.45);
+        });
+
         const bufferSize = audioCtx.sampleRate * 1.5;
         const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -1029,31 +1074,32 @@
     }
 
     function playFailureSound() {
-      initAudio();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const now = audioCtx.currentTime;
-
-      const osc = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(220, now);
-      osc.frequency.linearRampToValueAtTime(90, now + 1.2);
-
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(500, now);
-      filter.frequency.exponentialRampToValueAtTime(120, now + 1.2);
-
-      gainNode.gain.setValueAtTime(0.12, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-
-      osc.connect(filter);
-      filter.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 1.2);
-
       try {
+        initAudio();
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        const now = audioCtx.currentTime;
+
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(90, now + 1.2);
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(500, now);
+        filter.frequency.exponentialRampToValueAtTime(120, now + 1.2);
+
+        gainNode.gain.setValueAtTime(0.12, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+        osc.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 1.2);
+
         const bufferSize = audioCtx.sampleRate * 2.0;
         const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -1086,7 +1132,6 @@
       }
     }
 
-    // --- STREAMING_CHUNK: Localizing translated content... -->
     function translate(key, replacements = {}) {
       const dict = I18N[state.language];
       if (!dict) return key;
@@ -1096,7 +1141,7 @@
       }
       return text;
     }
-    // --- STREAMING_CHUNK: Fixing click handlers and translations... */
+
     function updateLanguageUI() {
       const mappings = {
         "header-sub": "header_sub",
@@ -1263,7 +1308,6 @@
       }, 3500);
     }
 
-    // --- STREAMING_CHUNK: Managing progressive lesson selection... -->
     function buildLessonSelect() {
       const select = document.getElementById('setup-lesson');
       if (!select) return;
@@ -1297,6 +1341,7 @@
 
     // --- GENERATORE DI ESERCIZI IA ---
     document.getElementById('btn-generate-phrase').addEventListener('click', async () => {
+      guaranteeAudioContext();
       const btn = document.getElementById('btn-generate-phrase');
       const box = document.getElementById('ai-exercise-box');
       const textDisplay = document.getElementById('ai-generated-text');
@@ -1348,6 +1393,7 @@
     });
 
     document.getElementById('btn-play-ai-phrase').addEventListener('click', () => {
+      guaranteeAudioContext();
       if (!state.aiGeneratedPhrase) return;
       if (!isMusicMuted) {
         showToast(translate("toast_ai_play"), "error");
@@ -1369,8 +1415,8 @@
       });
     });
 
-    // --- STREAMING_CHUNK: Activating AI CW Tutor analysis... -->
     document.getElementById('btn-ask-tutor').addEventListener('click', async () => {
+      guaranteeAudioContext();
       const btn = document.getElementById('btn-ask-tutor');
       const box = document.getElementById('tutor-feedback-box');
       const textDisplay = document.getElementById('tutor-feedback-text');
@@ -1453,7 +1499,6 @@
     let backgroundElements = [];
     let radioStation = { x: 3000, y: groundY - 60, width: 60, height: 60, reached: false };
 
-    // --- STREAMING_CHUNK: Initializing progressive game map... -->
     function initGameWorld() {
       player.x = 100;
       player.y = groundY - player.height;
@@ -1498,7 +1543,6 @@
       animationId = requestAnimationFrame(gameLoop);
     }
 
-    // --- STREAMING_CHUNK: Running physical loop updates... -->
     function updateGame() {
       if (keys['ArrowLeft'] || keys['KeyA'] || keys['leftActive']) {
         player.vx = -player.speed;
@@ -1575,7 +1619,6 @@
       }
     }
 
-    // --- STREAMING_CHUNK: Drawing game sprites on canvas... -->
     function drawGame() {
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1751,8 +1794,11 @@
       ctx.restore();
     }
 
-    // --- STREAMING_CHUNK: Binding input event listeners... -->
     window.addEventListener('keydown', (e) => {
+      // Evita di intercettare o bloccare i controlli di gioco se l'utente sta modificando un form di input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
       keys[e.code] = true;
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) > -1) {
         e.preventDefault();
@@ -1760,6 +1806,9 @@
     });
 
     window.addEventListener('keyup', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
       keys[e.code] = false;
     });
 
@@ -1768,6 +1817,7 @@
       if(btn) {
         btn.addEventListener('touchstart', (e) => {
           e.preventDefault();
+          guaranteeAudioContext();
           keys[keyStateName] = true;
         });
         btn.addEventListener('touchend', (e) => {
@@ -1801,10 +1851,12 @@
     }
 
     document.getElementById('btn-start-presentation').addEventListener('click', () => {
+      guaranteeAudioContext();
       showScreen('screen-setup');
     });
 
     document.getElementById('btn-start-game').addEventListener('click', () => {
+      guaranteeAudioContext();
       stopIntroMusic();
 
       const callsignInput = document.getElementById('setup-callsign').value.trim().toUpperCase();
@@ -1827,6 +1879,7 @@
     });
 
     document.getElementById('btn-test-audio').addEventListener('click', () => {
+      guaranteeAudioContext();
       stopIntroMusic();
 
       state.wpm = parseInt(document.getElementById('setup-wpm').value);
@@ -1876,7 +1929,6 @@
       initNotebookEngine();
     }
 
-    // --- STREAMING_CHUNK: Processing transcription groups generation... -->
     // --- GAME ENGINE: FASE 2 (NOTEBOOK COPY GAME) ---
     function generateNotebookGroups() {
       state.transmittedGroups = [];
@@ -1966,15 +2018,11 @@
     }
 
     document.getElementById('btn-start-listening').addEventListener('click', () => {
-      initAudio();
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      guaranteeAudioContext();
       if (state.playbackActive) return;
       playNextGroup();
     });
 
-    // --- STREAMING_CHUNK: Playback sequence for Morse code groups... -->
     function playNextGroup() {
       if (state.currentListeningIndex >= 29) {
         showToast(translate("toast_note_filled"), "info");
@@ -2047,10 +2095,7 @@
     }
 
     document.getElementById('btn-play-again').addEventListener('click', () => {
-      initAudio();
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      guaranteeAudioContext();
       if (state.playbackActive || state.currentListeningIndex === -1) return;
 
       state.playbackActive = true;
@@ -2083,21 +2128,14 @@
 
       if (e.code === 'Space') {
         e.preventDefault();
-        initAudio();
-        if (audioCtx && audioCtx.state === 'suspended') {
-          audioCtx.resume();
-        }
+        guaranteeAudioContext();
         handleGroupTransition();
       }
     });
 
-    // --- STREAMING_CHUNK: Integrating custom mobile virtual keyboard bindings... -->
     document.getElementById('mobile-focus-keyboard').addEventListener('click', (e) => {
       e.preventDefault();
-      initAudio();
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      guaranteeAudioContext();
       if (state.currentListeningIndex !== -1 && !state.playbackActive) {
         const activeInput = document.getElementById(`input-group-${state.currentListeningIndex}`);
         if (activeInput) {
@@ -2112,14 +2150,12 @@
 
     document.getElementById('mobile-tx-space').addEventListener('click', (e) => {
       e.preventDefault();
-      initAudio();
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      guaranteeAudioContext();
       handleGroupTransition();
     });
 
     document.getElementById('btn-submit-notebook').addEventListener('click', () => {
+      guaranteeAudioContext();
       if (state.userAnswers.some(ans => ans.length < 5)) {
         showToast(translate("toast_note_submit_err"), "error");
         return;
@@ -2129,7 +2165,6 @@
       evaluateResults();
     });
 
-    // --- STREAMING_CHUNK: Evaluating results comparison... -->
     function evaluateResults() {
       let totalChars = 150;
       let correctCharsCount = 0;
@@ -2219,6 +2254,7 @@
 
       if (pass && state.kochLesson < KOCH_SEQUENCE.length - 1) {
         retryBtn.onclick = () => {
+          guaranteeAudioContext();
           state.kochLesson++;
           state.currentChars = KOCH_SEQUENCE.slice(0, state.kochLesson + 1);
           document.getElementById('setup-lesson').value = state.kochLesson;
@@ -2230,6 +2266,7 @@
         };
       } else {
         retryBtn.onclick = () => {
+          guaranteeAudioContext();
           showScreen('screen-game');
           initGameWorld();
           gameLoop();
@@ -2238,10 +2275,10 @@
     }
 
     document.getElementById('btn-result-menu').addEventListener('click', () => {
+      guaranteeAudioContext();
       showScreen('screen-setup');
     });
 
-    // --- STREAMING_CHUNK: Starting application entrypoint... -->
     window.onload = () => {
       buildLessonSelect();
       updateLanguageUI();
@@ -2256,6 +2293,7 @@
       if (toggleMusicBtn) {
         toggleMusicBtn.addEventListener('click', (e) => {
           e.stopPropagation();
+          guaranteeAudioContext();
           isMusicMuted = !isMusicMuted;
           if (isMusicMuted) {
             toggleMusicBtn.innerHTML = `<i class="fa-solid fa-volume-xmark text-sm"></i> <span>${translate("intro_music_off")}</span>`;
