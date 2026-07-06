@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <!-- FontAwesome per icone retro -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
     body {
       font-family: 'Share Tech Mono', monospace;
@@ -295,25 +296,25 @@
         </div>
       </div>
 
-      <!-- Area Canvas del Gioco (Uso aspect-ratio responsive per calcolare in automatico le dimensioni corrette su mobile) -->
-      <div class="relative w-full aspect-[2.5/1] bg-slate-950 border border-gray-800 rounded mb-4 overflow-hidden">
+      <!-- Area Canvas del Gioco - Proporzioni 2.5:1 Bloccate per evitare squilibri visivi e coperture -->
+      <div class="relative w-full aspect-[2.5/1] bg-slate-950 border border-gray-800 rounded mb-2 overflow-hidden shadow-inner">
         <canvas id="game-canvas" width="800" height="320" class="w-full h-full block"></canvas>
-        
-        <!-- Controlli Mobile/Touch Sovrapposti (Sempre visibili su schermi touch grazie alla classe touch-only) -->
-        <div class="absolute bottom-3 left-3 right-3 flex justify-between pointer-events-none touch-only">
-          <div class="flex gap-2 pointer-events-auto">
-            <button id="touch-left" class="w-12 h-12 bg-gray-850/85 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-600 active:scale-95 transition-all">
-              <i class="fa-solid fa-arrow-left text-lg"></i>
-            </button>
-            <button id="touch-right" class="w-12 h-12 bg-gray-850/85 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-600 active:scale-95 transition-all">
-              <i class="fa-solid fa-arrow-right text-lg"></i>
-            </button>
-          </div>
-          <div class="pointer-events-auto">
-            <button id="touch-jump" class="w-16 h-12 bg-gray-850/85 active:bg-emerald-500 text-white rounded-xl flex items-center justify-center border border-gray-600 active:scale-95 transition-all uppercase font-bold text-xs" id="mobile-jump-label">
-              Salta
-            </button>
-          </div>
+      </div>
+
+      <!-- Controlli Mobile/Touch Esterni (Mostrati SOLO sotto il canvas su schermi touch per non coprire l'omino) -->
+      <div class="w-full flex justify-between items-center py-3 px-3 bg-gray-950 rounded-lg border border-gray-800/60 touch-only mb-3 select-none">
+        <div class="flex gap-4">
+          <button id="touch-left" class="w-14 h-14 bg-gray-850 hover:bg-gray-800 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-700 active:scale-95 transition-all select-none">
+            <i class="fa-solid fa-arrow-left text-xl"></i>
+          </button>
+          <button id="touch-right" class="w-14 h-14 bg-gray-850 hover:bg-gray-800 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-700 active:scale-95 transition-all select-none">
+            <i class="fa-solid fa-arrow-right text-xl"></i>
+          </button>
+        </div>
+        <div>
+          <button id="touch-jump" class="w-24 h-14 bg-gray-850 hover:bg-gray-800 active:bg-emerald-500 text-white rounded-xl flex items-center justify-center border border-gray-700 active:scale-95 transition-all uppercase font-bold text-sm tracking-wide select-none">
+            Salta
+          </button>
         </div>
       </div>
 
@@ -726,14 +727,13 @@
       }
     }, 1000);
 
-    // --- STREAMING_CHUNK: Motore audio Retro e Chiptune ---
+    // --- STREAMING_CHUNK: Setting up audio synth & chiptune background engine... -->
     // --- CHIPTUNE ARCADE MUSIC ENGINE ---
     let introMusicInterval = null;
     let isMusicMuted = false;
     let musicStep = 0;
     let musicStarted = false;
 
-    // Frequenze per la melodia arpeggiata retro (C-Major, F-Major, G-Major)
     const melodyFreqs = [
       261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 261.63, 392.00,
       349.23, 440.00, 523.25, 698.46, 523.25, 440.00, 349.23, 523.25,
@@ -775,7 +775,6 @@
       if (introMusicInterval) return;
       isMusicMuted = false;
       
-      // Assicura che la UI rifletta lo stato di attivazione
       const toggleMusicBtn = document.getElementById('btn-toggle-music');
       if (toggleMusicBtn) {
         toggleMusicBtn.innerHTML = `<i class="fa-solid fa-volume-high text-sm"></i> <span>${translate("intro_music_on")}</span>`;
@@ -786,11 +785,9 @@
       introMusicInterval = setInterval(() => {
         if (isMusicMuted) return;
         
-        // Melodia triangle (suono dolce tipo GameBoy)
         const mFreq = melodyFreqs[musicStep % melodyFreqs.length];
         playChiptuneTone(mFreq, 'triangle', 0.18, 0.12);
         
-        // Basso sawtooth (suono graffiante arcade)
         const bFreq = bassFreqs[musicStep % bassFreqs.length];
         playChiptuneTone(bFreq, 'sawtooth', 0.12, 0.05);
         
@@ -798,13 +795,12 @@
       }, 180);
     }
 
-    // Ferma la musica intro in modo sicuro e aggiorna lo stato visivo
     function stopIntroMusic() {
       if (introMusicInterval) {
         clearInterval(introMusicInterval);
         introMusicInterval = null;
       }
-      isMusicMuted = true; // Impedisce toni rimanenti
+      isMusicMuted = true;
       const toggleMusicBtn = document.getElementById('btn-toggle-music');
       if (toggleMusicBtn) {
         toggleMusicBtn.innerHTML = `<i class="fa-solid fa-volume-xmark text-sm"></i> <span>${translate("intro_music_off")}</span>`;
@@ -821,7 +817,7 @@
       }
     }
 
-    // Esegue una chiamata API con Exponential Backoff (fino a 5 tentativi)
+    // --- STREAMING_CHUNK: Integrating Gemini AI calls & error limits... -->
     async function callGemini(payload) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
       let delay = 1000;
@@ -836,7 +832,6 @@
             const data = await response.json();
             return data;
           } else {
-            // Blocco immediato su errori di parametrizzazione (es. 400), evita loop a vuoto
             if (response.status !== 429 && response.status !== 503) {
               const errData = await response.json().catch(() => ({}));
               throw new Error(errData.error?.message || `Errore API: ${response.status}`);
@@ -853,7 +848,6 @@
       throw new Error("Impossibile connettersi al servizio di IA. Riprova più tardi.");
     }
 
-    // --- DIZIONARIO MORSE COMPLETO ---
     const MORSE_DICT = {
       'A': '.-',    'B': '-...',  'C': '-.-.',  'D': '-..',   'E': '.',
       'F': '..-.',  'G': '--.',   'H': '....',  'I': '..',    'J': '.---',
@@ -866,14 +860,12 @@
       '.': '.-.-.-', ',': '--..--', '?': '..--..', '/': '-..-.'
     };
 
-    // Ordine di introduzione caratteri secondo il Metodo Koch standard
     const KOCH_SEQUENCE = [
       'K', 'M', 'R', 'S', 'U', 'A', 'P', 'T', 'L', 'O', 'W', 'I', '.', 'N', 'J', 
       'E', 'F', '0', 'Y', 'V', ',', 'G', '5', '/', 'Q', '9', 'Z', 'H', '3', '8', 
       'B', '?', '4', '2', '7', 'C', '1', 'D', '6', 'X'
     ];
 
-    // Valutazione dei livelli
     const DIFFICULTIES = {
       '1': { maxErrors: 0, textKey: "headline_perfect", badgeColor: "bg-emerald-500 text-gray-950" },
       '2': { maxErrors: 2, textKey: "headline_great", badgeColor: "bg-teal-500 text-gray-950" },
@@ -882,33 +874,25 @@
       '5': { maxErrors: 999, textKey: "headline_fail", badgeColor: "bg-red-500 text-gray-950" }
     };
 
-    // --- VARIABILI DI STATO ---
     let state = {
-      language: "it", // Lingua di default: Italiano
+      language: "it",
       callsign: "IK5JRZ",
-      difficultyLevel: "5", // Default: Livello 5
-      kochLesson: 1, // Lezione 1: K e M
+      difficultyLevel: "5",
+      kochLesson: 1,
       currentChars: ['K', 'M'],
       wpm: 18,
       effWpm: 12,
       freq: 650,
-      
-      // Fase 1: Piattaforma
       collectedLetters: [],
       collectedCount: 0,
       targetLettersCount: 20,
-      
-      // Fase 2: Taccuino
-      transmittedGroups: [], // Lista di 30 stringhe (cinquine)
+      transmittedGroups: [],
       userAnswers: Array(30).fill(""),
-      currentListeningIndex: -1, // Indice della cinquina attualmente riprodotta
+      currentListeningIndex: -1,
       playbackActive: false,
-
-      // IA Esercizi
       aiGeneratedPhrase: ""
     };
 
-    // --- AUDIO SINTETIZZATORE WEB AUDIO API ---
     let audioCtx = null;
     let activeSource = null;
 
@@ -918,7 +902,7 @@
       }
     }
 
-    // Suona una singola lettera Morse in tempo reale
+    // --- STREAMING_CHUNK: Coding Morse synth audio timings... -->
     function playMorse(char, onEnded = null) {
       initAudio();
       const code = MORSE_DICT[char.toUpperCase()];
@@ -927,10 +911,7 @@
         return;
       }
 
-      // Calcola i tempi basandosi sul WPM
       const dotDuration = 1.2 / state.wpm; 
-      
-      // Spaziatura di Farnsworth calcola la durata di pause tra caratteri basata su effWpm
       const farnsworthFactor = (state.effWpm < state.wpm) ? (1.2 / state.effWpm) / (1.2 / state.wpm) : 1.0;
       const charSpaceDuration = 3 * dotDuration * farnsworthFactor;
 
@@ -950,16 +931,13 @@
         const symbol = code[i];
         const symDuration = (symbol === '.') ? dotDuration : (dotDuration * 3);
         
-        // Note On (con rampa per evitare clic digitali)
         gainNode.gain.setValueAtTime(0, now);
         gainNode.gain.linearRampToValueAtTime(0.3, now + 0.005);
         
-        // Note Off
         now += symDuration;
         gainNode.gain.setValueAtTime(0.3, now);
         gainNode.gain.linearRampToValueAtTime(0, now + 0.005);
         
-        // Pausa tra elementi della stessa lettera (1 dot duration)
         now += dotDuration;
       }
 
@@ -973,7 +951,6 @@
       };
     }
 
-    // Suona un'intera sequenza (parola o cinquina o frase IA)
     function playMorseWord(word, onWordComplete = null) {
       initAudio();
       let letters = word.toUpperCase().split('');
@@ -983,7 +960,6 @@
         if (currentIdx < letters.length) {
           const l = letters[currentIdx];
           currentIdx++;
-          // Se e uno spazio, facciamo una pausa piu lunga
           if (l === ' ') {
             const spaceDur = (7.0 * (1.2 / state.effWpm)) * 1000;
             setTimeout(playNext, spaceDur);
@@ -997,14 +973,12 @@
       playNext();
     }
 
-    // Genera proceduralmente un effetto applauso retro + fanfara festosa (8-bit)
     function playSuccessSound() {
       initAudio();
       if (audioCtx.state === 'suspended') audioCtx.resume();
       const now = audioCtx.currentTime;
       
-      // Fanfara di Vittoria
-      const notes = [523.25, 659.25, 783.99, 1046.50]; // Do5, Mi5, Sol5, Do6
+      const notes = [523.25, 659.25, 783.99, 1046.50];
       notes.forEach((freq, idx) => {
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
@@ -1020,13 +994,12 @@
         osc.stop(now + idx * 0.10 + 0.45);
       });
 
-      // Applauso procedurale tramite impulsi densi di White Noise filtrati (Claps)
       try {
         const bufferSize = audioCtx.sampleRate * 1.5;
         const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
-          data[i] = Math.random() * 2 - 1; // Rumore bianco puro
+          data[i] = Math.random() * 2 - 1;
         }
 
         for (let i = 0; i < 9; i++) {
@@ -1046,7 +1019,7 @@
 
           noiseNode.connect(noiseFilter);
           noiseFilter.connect(noiseGain);
-          gainNode.connect(audioCtx.destination);
+          noiseGain.connect(audioCtx.destination);
           
           noiseNode.start(now + i * 0.08);
           noiseNode.stop(now + i * 0.08 + 0.4);
@@ -1056,17 +1029,15 @@
       }
     }
 
-    // Genera proceduralmente un effetto fischio/disappunto ("buuu") e sad slide
     function playFailureSound() {
       initAudio();
       if (audioCtx.state === 'suspended') audioCtx.resume();
       const now = audioCtx.currentTime;
 
-      // Pitch sliding triste ("wah-wah" calante)
       const osc = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(220, now); // La3
+      osc.frequency.setValueAtTime(220, now);
       osc.frequency.linearRampToValueAtTime(90, now + 1.2);
 
       const filter = audioCtx.createBiquadFilter();
@@ -1083,7 +1054,6 @@
       osc.start(now);
       osc.stop(now + 1.2);
 
-      // Rumore di sottofondo tipo "Buuuuu"
       try {
         const bufferSize = audioCtx.sampleRate * 2.0;
         const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -1108,7 +1078,7 @@
 
         noiseNode.connect(noiseFilter);
         noiseFilter.connect(noiseGain);
-        gainNode.connect(audioCtx.destination);
+        noiseGain.connect(audioCtx.destination);
         
         noiseNode.start(now);
         noiseNode.stop(now + 2.0);
@@ -1117,7 +1087,7 @@
       }
     }
 
-    // --- FUNZIONE DI SUPPORTO ALLA TRADUZIONE ---
+    // --- STREAMING_CHUNK: Localizing translated content... -->
     function translate(key, replacements = {}) {
       const dict = I18N[state.language];
       if (!dict) return key;
@@ -1128,9 +1098,7 @@
       return text;
     }
 
-    // Aggiorna l'intera interfaccia utente in base alla lingua selezionata
     function updateLanguageUI() {
-      // 1. Traduzione degli elementi HTML statici tramite ID
       const mappings = {
         "header-sub": "header_sub",
         "hdr-stat-call": "hdr_stat_call",
@@ -1186,19 +1154,16 @@
         if (el) el.innerHTML = translate(key);
       }
 
-      // Aggiorna pulsante musica
       const musicLabel = document.getElementById("intro-music-label");
       if (musicLabel) {
         musicLabel.innerText = isMusicMuted ? translate("intro_music_off") : translate("intro_music_on");
       }
 
-      // Aggiorna testo di caricamento del test audio
       const testBtn = document.getElementById("btn-test-audio");
       if (testBtn && !testBtn.disabled) {
         testBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i> ${translate("setup-test-btn")}`;
       }
 
-      // Aggiorna selettore della tolleranza errori
       const levelSelect = document.getElementById("setup-level");
       if (levelSelect) {
         const currentVal = levelSelect.value || "5";
@@ -1212,7 +1177,6 @@
         levelSelect.value = currentVal;
       }
 
-      // Aggiorna pulsante AI Esercizi
       const aiBtn = document.getElementById("btn-generate-phrase");
       if (aiBtn && !aiBtn.disabled) {
         aiBtn.innerHTML = `<i class="fa-solid fa-sparkles"></i> ✨ ${translate("setup-ai-btn")}`;
@@ -1223,14 +1187,10 @@
         aiPlayBtn.innerHTML = `<i class="fa-solid fa-play"></i> ✨ ${translate("setup-ai-play-btn")}`;
       }
 
-      // Aggiorna lezioni nel menu
       buildLessonSelect();
-
-      // Aggiorna instruzioni del taccuino
       updateNotebookInstructions();
     }
 
-    // Cambia lingua dell'applicazione
     function changeLanguage(lang) {
       state.language = lang;
       
@@ -1277,7 +1237,6 @@
       }
     }
 
-    // --- TOAST NOTIFICATIONS ---
     function showToast(message, type = "success") {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -1305,7 +1264,7 @@
       }, 3500);
     }
 
-    // --- INIZIALIZZAZIONE SELEZIONE LEZIONE (METODO KOCH) ---
+    // --- STREAMING_CHUNK: Managing progressive lesson selection... -->
     function buildLessonSelect() {
       const select = document.getElementById('setup-lesson');
       if (!select) return;
@@ -1316,7 +1275,6 @@
         option.value = i;
         const currentChars = KOCH_SEQUENCE.slice(0, i + 1);
         
-        // Localizzazione della parola lezione
         const lessonWord = state.language === "it" ? "Lezione" : "Lesson";
         const letterWord = state.language === "it" ? "lettere" : "letters";
         option.innerText = `${lessonWord} ${i}: ${currentChars[currentChars.length-1]} (Tot. ${i+1} ${letterWord})`;
@@ -1325,7 +1283,6 @@
       
       select.value = currentVal;
       
-      // Update info box on change
       select.onchange = (e) => {
         const lessonVal = parseInt(e.target.value);
         state.kochLesson = lessonVal;
@@ -1339,9 +1296,7 @@
       document.getElementById('setup-lesson-chars').innerText = state.currentChars.join(' ');
     }
 
-    // --- CHIAMATE GEMINI API ---
-
-    // 1. Generatore di Frase Esercizio Personalizzato ✨
+    // --- GENERATORE DI ESERCIZI IA ---
     document.getElementById('btn-generate-phrase').addEventListener('click', async () => {
       const btn = document.getElementById('btn-generate-phrase');
       const box = document.getElementById('ai-exercise-box');
@@ -1393,7 +1348,6 @@
       }
     });
 
-    // Ascolto della frase generata dall'IA
     document.getElementById('btn-play-ai-phrase').addEventListener('click', () => {
       if (!state.aiGeneratedPhrase) return;
       if (!isMusicMuted) {
@@ -1416,7 +1370,7 @@
       });
     });
 
-    // 2. Richiesta del Feedback del Tutor IA ✨
+    // --- STREAMING_CHUNK: Activating AI CW Tutor analysis... -->
     document.getElementById('btn-ask-tutor').addEventListener('click', async () => {
       const btn = document.getElementById('btn-ask-tutor');
       const box = document.getElementById('tutor-feedback-box');
@@ -1473,7 +1427,6 @@
       }
     });
 
-    // --- STREAMING_CHUNK: Logica di aggiornamento e disegno del canvas di gioco ---
     // --- GAME ENGINE: FASE 1 (PLATFORMER COLLECTION) ---
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
@@ -1481,7 +1434,6 @@
     let animationId = null;
     let keys = {};
     
-    // Oggetti di gioco
     let player = {
       x: 100,
       y: 200,
@@ -1502,7 +1454,7 @@
     let backgroundElements = [];
     let radioStation = { x: 3000, y: groundY - 60, width: 60, height: 60, reached: false };
 
-    // Genera mondo procedurale
+    // --- STREAMING_CHUNK: Initializing progressive game map... -->
     function initGameWorld() {
       player.x = 100;
       player.y = groundY - player.height;
@@ -1541,15 +1493,14 @@
       }
     }
 
-    // Loop principale del gioco canvas
     function gameLoop() {
       updateGame();
       drawGame();
       animationId = requestAnimationFrame(gameLoop);
     }
 
+    // --- STREAMING_CHUNK: Running physical loop updates... -->
     function updateGame() {
-      // Movimento Giocatore (Supporta sia tastiera che tasti touch)
       if (keys['ArrowLeft'] || keys['KeyA'] || keys['leftActive']) {
         player.vx = -player.speed;
         player.facingRight = false;
@@ -1563,7 +1514,6 @@
         player.frame = 0;
       }
 
-      // Salto
       if ((keys['ArrowUp'] || keys['KeyW'] || keys['Space'] || keys['jumpActive']) && player.isGrounded) {
         player.vy = player.jumpForce;
         player.isGrounded = false;
@@ -1571,7 +1521,6 @@
         keys['jumpActive'] = false;
       }
 
-      // Gravità e Fisica
       player.vy += 0.5;
       player.x += player.vx;
       player.y += player.vy;
@@ -1586,11 +1535,9 @@
         player.x = 50;
       }
 
-      // Adattiamo la telecamera
       cameraX = player.x - 200;
       if (cameraX < 0) cameraX = 0;
 
-      // Collisioni con lettere
       gameLetters.forEach(letter => {
         if (!letter.collected) {
           const distX = Math.abs(letter.x - (player.x + player.width / 2));
@@ -1604,7 +1551,6 @@
             document.getElementById('game-last-char').innerText = letter.char;
             
             playMorse(letter.char);
-
             showToast(translate("toast_game_collected_letter", { char: letter.char }), "info");
 
             if (state.collectedCount === 20) {
@@ -1615,7 +1561,6 @@
         }
       });
 
-      // Collisione con Stazione Radio Finale
       if (state.collectedCount >= 20) {
         const radioDistX = Math.abs((radioStation.x + radioStation.width/2) - (player.x + player.width/2));
         if (radioDistX < (player.width/2 + radioStation.width/2)) {
@@ -1631,12 +1576,11 @@
       }
     }
 
+    // --- STREAMING_CHUNK: Drawing game sprites on canvas... -->
     function drawGame() {
-      // Pulisci il canvas
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Stelle di sfondo
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       for (let i = 0; i < 20; i++) {
         let starX = (i * 123) % canvas.width;
@@ -1644,7 +1588,6 @@
         ctx.fillRect(starX, starY, 2, 2);
       }
 
-      // Colline distanti
       ctx.fillStyle = '#1e293b';
       ctx.beginPath();
       ctx.moveTo(0, groundY);
@@ -1656,7 +1599,6 @@
       ctx.lineTo(canvas.width, groundY);
       ctx.fill();
 
-      // Pali del telegrafo e Antenne di sfondo
       backgroundElements.forEach(elem => {
         let drawX = elem.x - cameraX;
         if (drawX > -100 && drawX < canvas.width + 100) {
@@ -1707,13 +1649,11 @@
         }
       });
 
-      // Terreno verde e linea di confine
       ctx.fillStyle = '#064e3b';
       ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
       ctx.fillStyle = '#10b981';
       ctx.fillRect(0, groundY, canvas.width, 6);
 
-      // Stazione radio a fine livello
       let radioDrawX = radioStation.x - cameraX;
       if (radioDrawX > -100 && radioDrawX < canvas.width + 100) {
         ctx.fillStyle = '#1e293b';
@@ -1748,7 +1688,6 @@
         }
       }
 
-      // Lettere da raccogliere (Uso un font tondo altamente leggibile al posto del pixel font)
       gameLetters.forEach(letter => {
         if (!letter.collected) {
           let drawX = letter.x - cameraX;
@@ -1765,7 +1704,6 @@
             ctx.arc(drawX, bobY, letter.radius, 0, Math.PI * 2);
             ctx.fill();
 
-            // Usiamo il font telegrafico tondo 'Share Tech Mono' per distinguere perfettamente O da 0
             ctx.fillStyle = '#064e3b';
             ctx.font = 'bold 18px "Share Tech Mono", monospace';
             ctx.textAlign = 'center';
@@ -1775,7 +1713,6 @@
         }
       });
 
-      // Disegno del personaggio
       let playerDrawX = player.x - cameraX;
       ctx.save();
       
@@ -1785,32 +1722,26 @@
       ctx.textAlign = 'center';
       ctx.fillText(state.callsign, playerDrawX + player.width / 2, player.y - 4);
 
-      // Cappello Rosso
       ctx.fillStyle = '#ef4444';
       ctx.fillRect(playerDrawX + (player.facingRight ? 4 : 0), player.y, 20, 6);
       ctx.fillRect(playerDrawX + 4, player.y - 4, 16, 6);
 
-      // Faccia
       ctx.fillStyle = '#fecdd3';
       ctx.fillRect(playerDrawX + 6, player.y + 6, 12, 10);
       
-      // Occhio e Baffi
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(playerDrawX + (player.facingRight ? 14 : 6), player.y + 8, 3, 3);
       ctx.fillStyle = '#78350f';
       ctx.fillRect(playerDrawX + (player.facingRight ? 12 : 4), player.y + 12, 8, 3);
 
-      // Salopette Blu
       ctx.fillStyle = '#3b82f6';
       ctx.fillRect(playerDrawX + 4, player.y + 16, 16, 14);
 
-      // Braccia Rosse
       ctx.fillStyle = '#ef4444';
       let armOffset = Math.sin(player.frame) * 4;
       if (player.vx === 0) armOffset = 0;
       ctx.fillRect(playerDrawX + (player.facingRight ? 0 : 16), player.y + 16 + armOffset, 4, 8);
 
-      // Scarpe Marroni
       ctx.fillStyle = '#78350f';
       let legOffset1 = Math.sin(player.frame) * 5;
       let legOffset2 = -Math.sin(player.frame) * 5;
@@ -1821,7 +1752,7 @@
       ctx.restore();
     }
 
-    // --- SETUP CONTROLLI TASTIERA ---
+    // --- STREAMING_CHUNK: Binding input event listeners... -->
     window.addEventListener('keydown', (e) => {
       keys[e.code] = true;
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) > -1) {
@@ -1833,7 +1764,6 @@
       keys[e.code] = false;
     });
 
-    // Supporto Touch Mobile
     const addTouchControl = (btnId, keyStateName) => {
       const btn = document.getElementById(btnId);
       if(btn) {
@@ -1851,8 +1781,6 @@
     addTouchControl('touch-right', 'rightActive');
     addTouchControl('touch-jump', 'jumpActive');
 
-    // --- GESTIONE SCHERMATE E TRANSIZIONI ---
-    
     function showScreen(screenId) {
       document.getElementById('screen-intro').classList.add('hidden');
       document.getElementById('screen-setup').classList.add('hidden');
@@ -1873,14 +1801,11 @@
       }
     }
 
-    // Passaggio dalla presentazione alla schermata di configurazione parametri (La musica continua a suonare!)
     document.getElementById('btn-start-presentation').addEventListener('click', () => {
       showScreen('screen-setup');
     });
 
-    // Avvio del Gioco dal Setup (Qui la musica si spegne per non coprire i suoni delle lettere!)
     document.getElementById('btn-start-game').addEventListener('click', () => {
-      // Ferma la musica chiptune di sottofondo per la fase di raccolta lettere
       stopIntroMusic();
 
       const callsignInput = document.getElementById('setup-callsign').value.trim().toUpperCase();
@@ -1902,9 +1827,7 @@
       showToast(translate("toast_game_welcome"), "success");
     });
 
-    // Funzione Prova Audio (Tasto K) nel menu
     document.getElementById('btn-test-audio').addEventListener('click', () => {
-      // Ferma eventuale musica intro per non sovrapporsi
       stopIntroMusic();
 
       state.wpm = parseInt(document.getElementById('setup-wpm').value);
@@ -1921,7 +1844,6 @@
       });
     });
 
-    // Slider Event Listeners per UI
     const sliders = [
       { id: 'setup-wpm', displayId: 'display-wpm', suffix: '' },
       { id: 'setup-eff-wpm', displayId: 'display-eff-wpm', suffix: '' },
@@ -1949,13 +1871,13 @@
       });
     });
 
-    // --- TRANSITION TO FASE 2: NOTEBOOK ---
     function transitionToNotebook() {
       showScreen('screen-notebook');
       generateNotebookGroups();
       initNotebookEngine();
     }
 
+    // --- STREAMING_CHUNK: Processing transcription groups generation... -->
     // --- GAME ENGINE: FASE 2 (NOTEBOOK COPY GAME) ---
     function generateNotebookGroups() {
       state.transmittedGroups = [];
@@ -1978,7 +1900,6 @@
         item.className = `bg-stone-900 border border-stone-800 p-2 rounded flex flex-col items-center gap-1 relative`;
         item.id = `group-box-${i}`;
         
-        // Usiamo inizialmente readonly per non interferire con il focus non richiesto su iOS
         item.innerHTML = `
           <span class="text-[10px] text-stone-500 font-mono font-bold absolute top-1 left-2">#${String(i+1).padStart(2, '0')}</span>
           <input type="text" id="input-group-${i}" maxlength="5" readonly
@@ -1989,7 +1910,6 @@
 
         const inputEl = document.getElementById(`input-group-${i}`);
         
-        // Consentiamo la selezione manuale al tap dell'utente solo sulla casella correntemente attiva
         inputEl.addEventListener('click', () => {
           if (i === state.currentListeningIndex && !state.playbackActive) {
             inputEl.removeAttribute('readonly');
@@ -2051,6 +1971,7 @@
       playNextGroup();
     });
 
+    // --- STREAMING_CHUNK: Playback sequence for Morse code groups... -->
     function playNextGroup() {
       if (state.currentListeningIndex >= 29) {
         showToast(translate("toast_note_filled"), "info");
@@ -2097,7 +2018,6 @@
           playBtn.innerHTML = `<i class="fa-solid fa-check"></i> ${translate("note_btn_done")}`;
         }
 
-        // Forza la riattivazione del fuoco sull'input corrente per dispositivi mobili
         const activeInput = document.getElementById(`input-group-${currentIdx}`);
         if (activeInput) {
           activeInput.removeAttribute('readonly');
@@ -2106,7 +2026,6 @@
       });
     }
 
-    // Azione universale associata al tasto SPAZIO o al bottone mobile TX
     function handleGroupTransition() {
       if (state.playbackActive) return;
 
@@ -2152,7 +2071,6 @@
       });
     });
 
-    // Controllo barra spaziatrice da tastiera fissa
     window.addEventListener('keydown', (e) => {
       if (document.getElementById('screen-notebook').classList.contains('hidden')) return;
 
@@ -2162,8 +2080,7 @@
       }
     });
 
-    // --- AGGANCIO PULSANTI AUSILIARI MOBILE (TOUCH SCREEN) ---
-    // Sblocca e apre la tastiera in modo sincrono al tocco del pulsante
+    // --- STREAMING_CHUNK: Integrating custom mobile virtual keyboard bindings... -->
     document.getElementById('mobile-focus-keyboard').addEventListener('click', (e) => {
       e.preventDefault();
       if (state.currentListeningIndex !== -1 && !state.playbackActive) {
@@ -2178,13 +2095,11 @@
       }
     });
 
-    // Azione "TX / SPAZIO" associata al grande tasto touch verde
     document.getElementById('mobile-tx-space').addEventListener('click', (e) => {
       e.preventDefault();
       handleGroupTransition();
     });
 
-    // --- CALCOLO RISULTATI ---
     document.getElementById('btn-submit-notebook').addEventListener('click', () => {
       if (state.userAnswers.some(ans => ans.length < 5)) {
         showToast(translate("toast_note_submit_err"), "error");
@@ -2195,6 +2110,7 @@
       evaluateResults();
     });
 
+    // --- STREAMING_CHUNK: Evaluating results comparison... -->
     function evaluateResults() {
       let totalChars = 150;
       let correctCharsCount = 0;
@@ -2306,19 +2222,17 @@
       showScreen('screen-setup');
     });
 
-    // Avvio dell'app
+    // --- STREAMING_CHUNK: Starting application entrypoint... -->
     window.onload = () => {
       buildLessonSelect();
       updateLanguageUI();
       showScreen('screen-intro');
       
-      // Avvia la musica arcade automatica ad ogni prima interazione possibile dell'utente
       document.body.addEventListener('click', tryStartIntroMusic, { once: true });
       document.body.addEventListener('keydown', tryStartIntroMusic, { once: true });
       document.body.addEventListener('touchstart', tryStartIntroMusic, { once: true });
       document.body.addEventListener('mousedown', tryStartIntroMusic, { once: true });
 
-      // Gestore per il pulsante muto/attivo della musica nella schermata di presentazione
       const toggleMusicBtn = document.getElementById('btn-toggle-music');
       if (toggleMusicBtn) {
         toggleMusicBtn.addEventListener('click', (e) => {
