@@ -506,7 +506,6 @@
         setup_test_btn: "Prova Audio (Tasto K)",
         setup_test_active: "Trasmissione K (-.-)...",
         setup_col3_title: "Esercizio Personalizzato ✨",
-        setup_ai_desc: "Lascia che l'IA crei un testo mnemonico o un finto QSO radio usando solo le lettere apprese fino ad ora!",
         setup_ai_btn: "Genera Frase Koch",
         setup_ai_loading: "Generando con IA...",
         setup_ai_wait: "Attendere, l'IA sta componendo l'esercizio...",
@@ -896,15 +895,12 @@
     let audioCtx = null;
     let activeSource = null;
 
-    function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-    }
-
-    // --- STREAMING_CHUNK: Coding Morse synth audio timings... -->
+    // --- STREAMING_CHUNK: Updating playMorse and playMorseWord audio context activations... */
     function playMorse(char, onEnded = null) {
       initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
       const code = MORSE_DICT[char.toUpperCase()];
       if (!code) {
         if (onEnded) onEnded();
@@ -953,6 +949,9 @@
 
     function playMorseWord(word, onWordComplete = null) {
       initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
       let letters = word.toUpperCase().split('');
       let currentIdx = 0;
 
@@ -1097,7 +1096,7 @@
       }
       return text;
     }
-
+    // --- STREAMING_CHUNK: Fixing click handlers and translations... */
     function updateLanguageUI() {
       const mappings = {
         "header-sub": "header_sub",
@@ -1131,7 +1130,7 @@
         "note-subtitle": "note-subtitle",
         "note-status-label": "note-status-label",
         "note-play-btn": "note-play-btn",
-        "note-replay-btn": "note-replay-btn",
+        "note-replay-btn": "note-replay_btn",
         "note-help-text": "note-help-text",
         "note-submit-btn": "note-submit-btn",
         "res-stat-total-lbl": "res-stat-total-lbl",
@@ -1161,7 +1160,7 @@
 
       const testBtn = document.getElementById("btn-test-audio");
       if (testBtn && !testBtn.disabled) {
-        testBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i> ${translate("setup-test-btn")}`;
+        testBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i> ${translate("setup_test_btn")}`;
       }
 
       const levelSelect = document.getElementById("setup-level");
@@ -1233,7 +1232,7 @@
 
       const replayBtn = document.getElementById('btn-play-again');
       if (replayBtn) {
-        replayBtn.innerHTML = `<i class="fa-solid fa-redo"></i> ${translate("note_replay-btn")}`;
+        replayBtn.innerHTML = `<i class="fa-solid fa-redo"></i> ${translate("note_replay_btn")}`;
       }
     }
 
@@ -1967,6 +1966,10 @@
     }
 
     document.getElementById('btn-start-listening').addEventListener('click', () => {
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
       if (state.playbackActive) return;
       playNextGroup();
     });
@@ -2044,6 +2047,10 @@
     }
 
     document.getElementById('btn-play-again').addEventListener('click', () => {
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
       if (state.playbackActive || state.currentListeningIndex === -1) return;
 
       state.playbackActive = true;
@@ -2076,6 +2083,10 @@
 
       if (e.code === 'Space') {
         e.preventDefault();
+        initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
         handleGroupTransition();
       }
     });
@@ -2083,6 +2094,10 @@
     // --- STREAMING_CHUNK: Integrating custom mobile virtual keyboard bindings... -->
     document.getElementById('mobile-focus-keyboard').addEventListener('click', (e) => {
       e.preventDefault();
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
       if (state.currentListeningIndex !== -1 && !state.playbackActive) {
         const activeInput = document.getElementById(`input-group-${state.currentListeningIndex}`);
         if (activeInput) {
@@ -2097,6 +2112,10 @@
 
     document.getElementById('mobile-tx-space').addEventListener('click', (e) => {
       e.preventDefault();
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
       handleGroupTransition();
     });
 
