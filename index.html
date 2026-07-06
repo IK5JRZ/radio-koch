@@ -103,7 +103,7 @@
   </header>
 
   <!-- Main Work Area -->
-  <main class="flex-grow flex flex-col items-center justify-center p-4 max-w-6xl w-full mx-auto">
+  <main class="flex-grow flex flex-col items-center justify-center p-4 max-w-6xl w-full mx-auto text-gray-100">
     
     <!-- SCHERMATA DI PRESENTAZIONE INIZIALE -->
     <div id="screen-intro" class="w-full max-w-xl bg-gray-900 border-2 border-emerald-500/50 rounded-lg p-8 shadow-[0_0_25px_rgba(16,185,129,0.2)] text-center flex flex-col items-center justify-center space-y-8">
@@ -292,15 +292,15 @@
         <!-- Controlli Mobile/Touch Sovrapposti -->
         <div class="absolute bottom-3 left-3 right-3 flex justify-between md:hidden pointer-events-none">
           <div class="flex gap-2 pointer-events-auto">
-            <button id="touch-left" class="w-12 h-12 bg-gray-800/80 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-600 active:scale-95 transition-all">
+            <button id="touch-left" class="w-12 h-12 bg-gray-850/85 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-600 active:scale-95 transition-all">
               <i class="fa-solid fa-arrow-left text-lg"></i>
             </button>
-            <button id="touch-right" class="w-12 h-12 bg-gray-800/80 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-600 active:scale-95 transition-all">
+            <button id="touch-right" class="w-12 h-12 bg-gray-850/85 active:bg-emerald-500 text-white rounded-full flex items-center justify-center border border-gray-600 active:scale-95 transition-all">
               <i class="fa-solid fa-arrow-right text-lg"></i>
             </button>
           </div>
           <div class="pointer-events-auto">
-            <button id="touch-jump" class="w-16 h-12 bg-gray-800/80 active:bg-emerald-500 text-white rounded-xl flex items-center justify-center border border-gray-600 active:scale-95 transition-all uppercase font-bold text-xs" id="mobile-jump-label">
+            <button id="touch-jump" class="w-16 h-12 bg-gray-850/85 active:bg-emerald-500 text-white rounded-xl flex items-center justify-center border border-gray-600 active:scale-95 transition-all uppercase font-bold text-xs">
               Salta
             </button>
           </div>
@@ -352,6 +352,19 @@
         </div>
       </div>
 
+      <!-- Pannello tasti ausiliari specifici per cellulare / iPad -->
+      <div class="flex lg:hidden flex-wrap gap-2 mb-4 p-3 bg-stone-950 rounded border border-amber-900/30 justify-between items-center">
+        <span class="text-amber-500 font-mono text-xs font-bold uppercase"><i class="fa-solid fa-mobile-screen mr-1"></i> Pannello Mobile:</span>
+        <div class="flex gap-2">
+          <button id="mobile-focus-keyboard" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold py-2 px-3 rounded text-xs uppercase transition flex items-center gap-1.5">
+            <i class="fa-solid fa-keyboard"></i> <span>Apri Tastiera</span>
+          </button>
+          <button id="mobile-tx-space" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-5 rounded text-xs uppercase tracking-wider transition flex items-center gap-1.5 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]">
+            <i class="fa-solid fa-paper-plane"></i> <span>TX / SPAZIO</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Taccuino Grid di Cinquine -->
       <div id="cinquine-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 max-h-96 overflow-y-auto p-2 bg-stone-950/60 rounded border border-stone-800">
         <!-- Generato Dinamicamente da JS: 30 Input Box per cinquine -->
@@ -360,7 +373,7 @@
       <!-- End Actions -->
       <div class="mt-6 pt-4 border-t border-amber-800/40 flex flex-col md:flex-row justify-between items-center gap-4">
         <p class="text-xs text-stone-400 max-w-md" id="note-help-text">
-          <span class="text-amber-500 font-bold">Nota:</span> Se non capisci una lettera scrivi un punto interrogativo <code class="bg-stone-800 text-amber-400 px-1 rounded font-mono">?</code>. Assicurati che ogni gruppo sia di esattamente 5 lettere prima di inviare.
+          <span class="text-amber-500 font-bold">Nota:</span> Se non capisci una letter scrivi un punto interrogativo <code class="bg-stone-800 text-amber-400 px-1 rounded font-mono">?</code>. Assicurati che ogni gruppo sia di esattamente 5 lettere prima di inviare.
         </p>
         <button id="btn-submit-notebook" disabled class="btn-retro w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-8 py-3 rounded-lg uppercase tracking-wide transition flex items-center justify-center gap-2">
           <i class="fa-solid fa-clipboard-check"></i> <span id="note-submit-btn">Termina & Confronta</span>
@@ -1456,6 +1469,7 @@
     
     let animationId = null;
     let keys = {};
+    let viewScale = 1.0; // Fattore di scala adattivo per mobile/tablet
     
     // Oggetti di gioco
     let player = {
@@ -1478,8 +1492,16 @@
     let backgroundElements = [];
     let radioStation = { x: 3000, y: groundY - 60, width: 60, height: 60, reached: false };
 
+    // Gestione della reattività del canvas e del ridisegno proporzionale
+    function updateScaleFactor() {
+      // Se lo schermo è mobile/piccolo (<768px), aumentiamo il rendering del 40% (1.4x)
+      viewScale = window.innerWidth < 768 ? 1.4 : 1.0;
+    }
+
     // Genera mondo procedurale
     function initGameWorld() {
+      updateScaleFactor();
+      
       player.x = 100;
       player.y = groundY - player.height;
       player.vx = 0;
@@ -1525,7 +1547,7 @@
     }
 
     function updateGame() {
-      // Movimento Giocatore
+      // Movimento Giocatore (Supporta sia tastiera che tasti touch)
       if (keys['ArrowLeft'] || keys['KeyA'] || keys['leftActive']) {
         player.vx = -player.speed;
         player.facingRight = false;
@@ -1562,7 +1584,8 @@
         player.x = 50;
       }
 
-      cameraX = player.x - 200;
+      // Adattiamo la camera basandoci sul fattore di scala corrente
+      cameraX = player.x - (200 / viewScale);
       if (cameraX < 0) cameraX = 0;
 
       // Collisioni con lettere
@@ -1607,12 +1630,21 @@
     }
 
     function drawGame() {
+      ctx.save();
+      
+      // Se siamo su mobile, applichiamo un ingrandimento del contesto di disegno del canvas
+      if (viewScale !== 1.0) {
+        ctx.scale(viewScale, viewScale);
+        // Spostiamo la visualizzazione per mantenere il focus bilanciato sul personaggio
+        ctx.translate(-cameraX * (viewScale - 1) * 0.1, 0);
+      }
+
       ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, canvas.width / viewScale, canvas.height / viewScale);
 
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       for (let i = 0; i < 20; i++) {
-        let starX = (i * 123) % canvas.width;
+        let starX = (i * 123) % (canvas.width / viewScale);
         let starY = (i * 47) % 150;
         ctx.fillRect(starX, starY, 2, 2);
       }
@@ -1620,17 +1652,17 @@
       ctx.fillStyle = '#1e293b';
       ctx.beginPath();
       ctx.moveTo(0, groundY);
-      for (let i = 0; i <= canvas.width; i += 50) {
+      for (let i = 0; i <= canvas.width / viewScale; i += 50) {
         let hillX = i + cameraX * 0.2;
         let hillY = groundY - 40 + Math.sin(hillX * 0.005) * 20;
         ctx.lineTo(i, hillY);
       }
-      ctx.lineTo(canvas.width, groundY);
+      ctx.lineTo(canvas.width / viewScale, groundY);
       ctx.fill();
 
       backgroundElements.forEach(elem => {
         let drawX = elem.x - cameraX;
-        if (drawX > -100 && drawX < canvas.width + 100) {
+        if (drawX > -100 && drawX < (canvas.width / viewScale) + 100) {
           if (elem.type === 'telegraph-pole') {
             ctx.strokeStyle = '#78350f';
             ctx.lineWidth = 6;
@@ -1679,12 +1711,12 @@
       });
 
       ctx.fillStyle = '#064e3b';
-      ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+      ctx.fillRect(0, groundY, canvas.width / viewScale, (canvas.height / viewScale) - groundY);
       ctx.fillStyle = '#10b981';
-      ctx.fillRect(0, groundY, canvas.width, 6);
+      ctx.fillRect(0, groundY, canvas.width / viewScale, 6);
 
       let radioDrawX = radioStation.x - cameraX;
-      if (radioDrawX > -100 && radioDrawX < canvas.width + 100) {
+      if (radioDrawX > -100 && radioDrawX < (canvas.width / viewScale) + 100) {
         ctx.fillStyle = '#1e293b';
         ctx.strokeStyle = '#10b981';
         ctx.lineWidth = 3;
@@ -1722,7 +1754,7 @@
           let drawX = letter.x - cameraX;
           let bobY = letter.y + Math.sin(Date.now() * 0.005 + letter.bobOffset) * 5;
 
-          if (drawX > -50 && drawX < canvas.width + 50) {
+          if (drawX > -50 && drawX < (canvas.width / viewScale) + 50) {
             let grad = ctx.createRadialGradient(drawX, bobY, 2, drawX, bobY, letter.radius);
             grad.addColorStop(0, '#a7f3d0');
             grad.addColorStop(0.8, '#10b981');
@@ -1778,6 +1810,7 @@
       ctx.fillRect(playerDrawX + 12, player.y + 30 + (legOffset2 > 0 ? legOffset2 : 0), 8, 8);
 
       ctx.restore();
+      ctx.restore(); // Ripristina lo stato iniziale dello scale di disegno
     }
 
     // --- SETUP CONTROLLI TASTIERA ---
@@ -1937,15 +1970,25 @@
         item.className = `bg-stone-900 border border-stone-800 p-2 rounded flex flex-col items-center gap-1 relative`;
         item.id = `group-box-${i}`;
         
+        // Usiamo inizialmente readonly per non interferire con il focus non richiesto su iOS
         item.innerHTML = `
           <span class="text-[10px] text-stone-500 font-mono font-bold absolute top-1 left-2">#${String(i+1).padStart(2, '0')}</span>
-          <input type="text" id="input-group-${i}" maxlength="5" disabled
-                 class="w-full text-center bg-stone-950 text-amber-400 border border-stone-800 focus:border-amber-500 focus:outline-none rounded py-1 px-2 uppercase font-mono tracking-widest text-lg font-bold disabled:opacity-40"
+          <input type="text" id="input-group-${i}" maxlength="5" readonly
+                 class="w-full text-center bg-stone-950 text-amber-400 border border-stone-800 focus:border-amber-500 focus:outline-none rounded py-1 px-2 uppercase font-mono tracking-widest text-lg font-bold opacity-50"
                  placeholder="?????">
         `;
         container.appendChild(item);
 
         const inputEl = document.getElementById(`input-group-${i}`);
+        
+        // Consentiamo la selezione manuale al tap dell'utente solo sulla casella correntemente attiva
+        inputEl.addEventListener('click', () => {
+          if (i === state.currentListeningIndex && !state.playbackActive) {
+            inputEl.removeAttribute('readonly');
+            inputEl.focus();
+          }
+        });
+
         inputEl.addEventListener('input', (e) => {
           let val = e.target.value.toUpperCase();
           val = val.replace(/[^A-Z0-9.,\/?]/g, '');
@@ -2019,13 +2062,15 @@
       
       for (let i = 0; i < 30; i++) {
         const box = document.getElementById(`group-box-${i}`);
+        const input = document.getElementById(`input-group-${i}`);
         if (i === currentIdx) {
           box.classList.add('ring-2', 'ring-amber-500', 'bg-stone-900');
-          const input = document.getElementById(`input-group-${i}`);
-          input.removeAttribute('disabled');
+          input.removeAttribute('readonly');
+          input.classList.remove('opacity-50');
           input.focus();
         } else {
           box.classList.remove('ring-2', 'ring-amber-500');
+          input.setAttribute('readonly', 'true');
         }
       }
 
@@ -2043,7 +2088,32 @@
         } else {
           playBtn.innerHTML = `<i class="fa-solid fa-check"></i> ${translate("note_btn_done")}`;
         }
+
+        // Forza la riattivazione del fuoco sull'input corrente per dispositivi mobili
+        const activeInput = document.getElementById(`input-group-${currentIdx}`);
+        if (activeInput) {
+          activeInput.removeAttribute('readonly');
+          activeInput.focus();
+        }
       });
+    }
+
+    // Azione universale associata al tasto SPAZIO o al bottone mobile TX
+    function handleGroupTransition() {
+      if (state.playbackActive) return;
+
+      if (state.currentListeningIndex === -1) {
+        playNextGroup();
+      } else {
+        const currentInput = document.getElementById(`input-group-${state.currentListeningIndex}`);
+        if (currentInput && currentInput.value.length < 5) {
+          showToast(translate("toast_note_incomplete"), "error");
+        } else if (state.currentListeningIndex < 29) {
+          playNextGroup();
+        } else {
+          showToast(translate("toast_note_filled"), "info");
+        }
+      }
     }
 
     document.getElementById('btn-play-again').addEventListener('click', () => {
@@ -2057,7 +2127,11 @@
       document.getElementById('btn-start-listening').setAttribute('disabled', 'true');
       document.getElementById('btn-play-again').setAttribute('disabled', 'true');
 
-      document.getElementById(`input-group-${currentIdx}`).focus();
+      const activeInput = document.getElementById(`input-group-${currentIdx}`);
+      if (activeInput) {
+        activeInput.removeAttribute('readonly');
+        activeInput.focus();
+      }
 
       playMorseWord(currentGroupText, () => {
         state.playbackActive = false;
@@ -2070,24 +2144,36 @@
       });
     });
 
+    // Controllo barra spaziatrice da tastiera fissa
     window.addEventListener('keydown', (e) => {
       if (document.getElementById('screen-notebook').classList.contains('hidden')) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
-        
-        if (!state.playbackActive && state.currentListeningIndex < 29) {
-          const currentInput = document.getElementById(`input-group-${state.currentListeningIndex}`);
-          
-          if (state.currentListeningIndex === -1) {
-            playNextGroup();
-          } else if (currentInput && currentInput.value.length < 5) {
-            showToast(translate("toast_note_incomplete"), "error");
-          } else {
-            playNextGroup();
-          }
-        }
+        handleGroupTransition();
       }
+    });
+
+    // --- AGGANCIO PULSANTI AUSILIARI MOBILE (TOUCH SCREEN) ---
+    // Sblocca e apre la tastiera in modo sincrono al tocco del pulsante
+    document.getElementById('mobile-focus-keyboard').addEventListener('click', (e) => {
+      e.preventDefault();
+      if (state.currentListeningIndex !== -1 && !state.playbackActive) {
+        const activeInput = document.getElementById(`input-group-${state.currentListeningIndex}`);
+        if (activeInput) {
+          activeInput.removeAttribute('readonly');
+          activeInput.focus();
+        }
+      } else {
+        const errorMsg = state.language === "it" ? "Avvia prima la ricezione per scrivere!" : "Start reception first to type!";
+        showToast(errorMsg, "info");
+      }
+    });
+
+    // Azione "TX / SPAZIO" associata al grande tasto touch verde
+    document.getElementById('mobile-tx-space').addEventListener('click', (e) => {
+      e.preventDefault();
+      handleGroupTransition();
     });
 
     // --- CALCOLO RISULTATI ---
